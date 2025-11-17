@@ -20,6 +20,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - run: npm install
+      - run: cargo install mdbook
       - run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
