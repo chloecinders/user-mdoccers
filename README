@@ -1,0 +1,18 @@
+Test to see if migrating https://github.com/discord-userdoccers/discord-userdoccers out of userdoccers is worth it
+
+Built on mdbook.
+
+To get started:
+- install node/npm: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
+- install rustup/cargo: https://rust-lang.org/tools/install/
+- install mdbook: `cargo install mdbook`
+
+Build using `npm run build` (bundles components, rebuilds preprocessors) preview using `mdbook serve`.
+
+./assets: additional assets to include in the docs (css, js)
+./preprocessors: process the markdown before rendering
+./src: documentation markdown files
+./src_old: old nextjs markdown files
+./src-js: lit components, gets bundled into the site
+
+Accessible on https://chloecinders.github.io/user-mdoccers/
