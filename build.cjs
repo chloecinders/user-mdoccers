@@ -21,9 +21,11 @@ for (const project of projects) {
   const exe = crateName + (process.platform === "win32" ? ".exe" : "");
 
   const targetDir = join(project, "target");
-  const releaseDir = readdirSync(targetDir)
-    .map(f => join(targetDir, f, "release", exe))
-    .filter(p => !!p && p != "/")
+
+  const releaseDir = readdirSync(targetDir, { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => join(targetDir, d.name, "release", exe))
+    .concat(join(targetDir, "release", exe))
     .find(p => existsSync(p));
 
   if (!releaseDir) throw new Error(`No release folder found for ${crateName}`);
