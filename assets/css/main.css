@@ -1,11 +1,55 @@
 :root {
     --content-max-width: 1200px !important;
+
+    --bg: #36373e;
+    --sidebar-bg: #2c2d32;
+
+    --links: #7baff4;
+    --fg: #fff;
+
+    --theme-hover: rgba(255, 255, 255, 0.05);
+    --table-header-bg: #323339;
+    --table-border-color: none;
+    --table-main-bg: #323339;
+    --table-alternate-bg: #232428;
 }
 
 h2, h3 {
     margin-block-start: 16px;
 }
 
+code {
+    border-radius: 5px;
+}
+
 table {
     width: 100%;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+thead {
+    border-bottom: 2px solid var(--table-alternate-bg);
+}
+
+tbody tr {
+    background-color: var(--table-main-bg);
+}
+
+.chapter li a {
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #fff;
+    width: 100%;
+
+    &:hover {
+        background-color: #3e3f45;
+        color: #fff;
+    }
+
+    &.active {
+        color: #fff;
+        background-color: #45464e;
+    }
 }
