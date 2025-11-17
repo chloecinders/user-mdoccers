@@ -18,22 +18,24 @@ for (const project of projects) {
   console.log(`Building ${crateName}...`);
   execSync("cargo build --release", { stdio: "inherit", cwd: project });
 
+  const exe = crateName + (process.platform === "win32" ? ".exe" : "");
+
   const targetDir = join(project, "target");
-  const releaseDirs = readdirSync(targetDir)
-    .map(d => join(targetDir, d, "release"))
-    .filter(p => existsSync(p));
+  const releaseDir = readdirSync(targetDir)
+    .map(f => join(targetDir, f, "release", exe))
+    .filter(p => !!p && p != "/")
+    .find(p => existsSync(p));
 
-  if (releaseDirs.length === 0) throw new Error(`No release folder found for ${crateName}`);
+  if (!releaseDir) throw new Error(`No release folder found for ${crateName}`);
 
-  const releaseDir = releaseDirs[0];
-  const exeExt = process.platform === "win32" ? ".exe" : "";
-  const binaryPath = join(releaseDir, crateName + exeExt);
+  const binaryPath = releaseDir;
+
+  console.log(binaryPath);
 
   if (!existsSync(binaryPath)) throw new Error(`Binary not found at ${binaryPath}`);
 
   const destBinary = join(distDir, crateName);
 
-  // On Windows, also create a symlink without the .exe extension
   if (process.platform === "win32") {
     try { unlinkSync(destBinary); } catch {}
     symlinkSync(binaryPath, destBinary, "file");
