@@ -1,0 +1,16 @@
+[book]
+authors = ["Chloe"]
+language = "en"
+src = "src"
+title = "User-Doccers"
+
+[build]
+build-dir = "./dist/book"
+
+[output.html]
+additional-css=["./assets/css/main.css"]
+additional-js=["./assets/js/main.js", "./dist/js/bundle.iife.js"]
+
+[preprocessor.superscript]
+command = "./dist/preprocessors/superscript"
+renderers = ["html"]

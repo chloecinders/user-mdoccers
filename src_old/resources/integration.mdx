@@ -1,0 +1,428 @@
+# Integrations
+
+Integrations represent a connection between a service and a guild. This may include third-party services such as Twitch or YouTube, Discord-housed integrations such as bots, or internal integrations such as role subscriptions.
+
+### Integration Object
+
+###### Integration Structure
+
+| Field                             | Type                                                                                                                     | Description                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| id ^1^                            | snowflake                                                                                                                | The ID of the integration                                                           |
+| name                              | string                                                                                                                   | The name of the integration                                                         |
+| type                              | string                                                                                                                   | The [type of integration](#integration-type)                                        |
+| enabled                           | boolean                                                                                                                  | Whether this integration is enabled                                                 |
+| account                           | [integration account](#integration-account-structure) object                                                             | Integration account information                                                     |
+| syncing? ^2^                      | boolean                                                                                                                  | Whether this integration is syncing                                                 |
+| role_id? ^2^                      | snowflake                                                                                                                | Role ID that this integration uses for subscribers                                  |
+| enable_emoticons? ^2^             | boolean                                                                                                                  | Whether emoticons should be synced for this integration (Twitch only)               |
+| expire_behavior? ^2^              | integer                                                                                                                  | The [behavior of expiring subscribers](#integration-expire-behavior)                |
+| expire_grace_period? ^2^          | integer                                                                                                                  | The grace period before expiring subscribers (one of 1, 3, 7, 14, 30, in days)      |
+| synced_at? ^2^                    | ISO8601 timestamp                                                                                                        | When this integration was last synced                                               |
+| subscriber_count? ^2^             | integer                                                                                                                  | How many subscribers this integration has                                           |
+| revoked? ^2^                      | boolean                                                                                                                  | Whether this integration has been revoked                                           |
+| application? ^3^                  | [integration application](#integration-application-structure) object                                                     | The integrated OAuth2 application                                                   |
+| scopes? ^3^                       | array[string]                                                                                                            | The [scopes](/topics/oauth2#oauth2-scopes) the application has been authorized with |
+| role_connections_metadata ^3^ ^4^ | array[[application role connection metadata](/resources/application#application-role-connection-metadata-object) object] | The metadata that the application has set for role connections                      |
+| user? ^5^                         | partial [user](/resources/user#user-object) object                                                                       | The user that added this integration                                                |
+
+^1^ This field may also be the literal string "twitch-partners" to represent the Twitch Partners integration.
+
+^2^ Only provided for Twitch and YouTube integrations.
+
+^3^ Only provided for Discord application integrations.
+
+^4^ Only included when fetched from [Get Guild Integrations](#get-guild-integrations) with `include_role_connections_metadata` set to `true`.
+
+^5^ Only included for integrations when fetched through the [Get Guild Integrations](#get-guild-integrations) endpoint. Some older or internally-created integrations may not have an attached user.
+
+###### Integration Type
+
+| Value              | Name                                   |
+| ------------------ | -------------------------------------- |
+| twitch             | Twitch integration                     |
+| youtube            | YouTube integration                    |
+| discord            | Discord application integration        |
+| guild_subscription | Internal role subscription integration |
+
+###### Integration Expire Behavior
+
+| Value | Name        | Description                                            |
+| ----- | ----------- | ------------------------------------------------------ |
+| 0     | REMOVE_ROLE | Remove the subscriber role from the user on expiration |
+| 1     | KICK        | Remove the user from the guild on expiration           |
+
+###### Integration Account Structure
+
+| Field | Type   | Description             |
+| ----- | ------ | ----------------------- |
+| id    | string | The ID of the account   |
+| name  | string | The name of the account |
+
+### Integration Application Object
+
+###### Integration Application Structure
+
+| Field                                  | Type                                                                           | Description                                                                                                                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| id                                     | snowflake                                                                      | The ID of the application                                                                                                                                                            |
+| name                                   | string                                                                         | The name of the application                                                                                                                                                          |
+| description                            | string                                                                         | The description of the application                                                                                                                                                   |
+| icon                                   | ?string                                                                        | The application's [icon hash](/reference#cdn-formatting)                                                                                                                             |
+| cover_image?                           | string                                                                         | The application's default rich presence invite [cover image hash](/reference#cdn-formatting)                                                                                         |
+| splash?                                | string                                                                         | The application's [splash hash](/reference#cdn-formatting)                                                                                                                           |
+| type                                   | ?integer                                                                       | The [type of the application](/resources/application#application-type), if any                                                                                                       |
+| primary_sku_id?                        | snowflake                                                                      | The ID of the application's primary SKU (game, application subscription, etc.)                                                                                                       |
+| bot?                                   | partial [user](/resources/user#user-object) object                             | The bot attached to this application                                                                                                                                                 |
+| deeplink_uri?                          | ?string                                                                        | The URL used for deep linking during [OAuth2 authorization](/topics/oauth2) on mobile devices                                                                                        |
+| third_party_skus?                      | array[[application SKU](/resources/application#application-sku-object) object] | The third party SKUs of the application's game                                                                                                                                       |
+| role_connections_verification_url? ^1^ | ?string                                                                        | The role connection verification entry point of the integration; when configured, this will render the application as a verification method in guild role verification configuration |
+| is_verified                            | boolean                                                                        | Whether the application is verified                                                                                                                                                  |
+| is_discoverable                        | boolean                                                                        | Whether the application is discoverable in the application directory                                                                                                                 |
+| is_monetized                           | boolean                                                                        | Whether the application has monetization enabled                                                                                                                                     |
+
+^1^ Only present when fetched from the [Get Guild Integrations](#get-guild-integrations) endpoint with `include_role_connections_metadata` set to `true`.
+
+### Integration Guild Object
+
+###### Integration Guild Structure
+
+| Field | Type      | Description                                        |
+| ----- | --------- | -------------------------------------------------- |
+| id    | snowflake | The ID of the guild                                |
+| name  | string    | The name of the guild (2-100 characters)           |
+| icon  | ?string   | The guild's [icon hash](/reference#cdn-formatting) |
+
+### GIF Object
+
+###### GIF Structure
+
+| Field                  | Type    | Description                                      |
+| ---------------------- | ------- | ------------------------------------------------ |
+| id                     | string  | The ID of the GIF                                |
+| title **(deprecated)** | string  | The title of the GIF                             |
+| url                    | string  | The provider source URL of the GIF               |
+| src                    | string  | The media URL of the GIF in the requested format |
+| gif_src                | string  | The media URL of the GIF in GIF format           |
+| preview                | string  | A preview image of the GIF                       |
+| width                  | integer | Width of image                                   |
+| height                 | integer | Height of image                                  |
+
+###### GIF Media Format
+
+| Value     | Description                          |
+| --------- | ------------------------------------ |
+| mp4       | MP4 video                            |
+| tinymp4   | MP4 video in a smaller size          |
+| nanomp4   | MP4 video in a very small size       |
+| loopedmp4 | MP4 video that loops (same as `mp4`) |
+| webm      | WebM video                           |
+| tinywebm  | WebM video in a smaller size         |
+| nanowebm  | WebM video in a very small size      |
+| gif       | GIF image                            |
+| mediumgif | GIF image in a medium size           |
+| tinygif   | GIF image in a smaller size          |
+| nanogif   | GIF image in a very small size       |
+
+###### Example GIF
+
+```json
+{
+  "id": "12409989992265318124",
+  "title": "",
+  "url": "https://tenor.com/view/tasha-steelz-gif-25509948",
+  "src": "https://media.tenor.com/rDkkJaMgfuwAAAP4/tasha-steelz.webm",
+  "gif_src": "https://media.tenor.com/rDkkJaMgfuwAAAAC/tasha-steelz.gif",
+  "width": 150,
+  "height": 84,
+  "preview": "https://media.tenor.com/rDkkJaMgfuwAAAAD/tasha-steelz.png"
+}
+```
+
+## Endpoints
+
+<RouteHeader method="GET" url="/guilds/{guild.id}/integrations">
+  Get Guild Integrations
+</RouteHeader>
+
+Returns a list of [integration](#integration-object) objects for the guild. Requires the `MANAGE_GUILD` permission.
+
+<Alert type="warn">
+
+This endpoint returns a maximum of 50 integrations. If a guild has more integrations, they cannot be accessed.
+
+</Alert>
+
+###### Query String Parameters
+
+| Field                              | Type    | Description                                                                                       |
+| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------- |
+| has_commands?                      | boolean | Whether to only include Discord application integrations with registered commands (default false) |
+| include_role_connections_metadata? | boolean | Whether to include integration role connection metadata (default false)                           |
+
+<RouteHeader method="POST" url="/guilds/{guild.id}/integrations" supportsAuditReason>
+  Create Guild Integration
+</RouteHeader>
+
+Enables an integration for the guild. Requires the `MANAGE_GUILD` permission. Returns a 204 empty response on success. Fires [Guild Integrations Update](/topics/gateway-events#guild-integrations-update) and [Integration Create](/topics/gateway-events#integration-create) Gateway events.
+
+###### JSON Params
+
+| Field | Type   | Description                                                                                        |
+| ----- | ------ | -------------------------------------------------------------------------------------------------- |
+| type  | string | The [type of integration](#integration-type) to enable (only `twitch` and `youtube` are supported) |
+| id    | string | The ID of the integration account to enable                                                        |
+
+<RouteHeader method="POST" url="/guilds/{guild.id}/integrations/{integration.id}/sync" supportsAuditReason>
+  Sync Guild Integration
+</RouteHeader>
+
+Syncs an integration for the guild. Requires the `MANAGE_GUILD` permission. Returns a 204 empty response on success. Fires [Guild Integrations Update](/topics/gateway-events#guild-integrations-update) and [Integration Update](/topics/gateway-events#integration-update) Gateway events.
+
+<RouteHeader method="PATCH" url="/guilds/{guild.id}/integrations/{integration.id}" supportsAuditReason>
+  Modify Guild Integration
+</RouteHeader>
+
+Modifies the behavior and settings of the integration in the guild. Requires the `MANAGE_GUILD` permission. Returns a 204 empty response on success. Fires [Guild Integrations Update](#integration-object) and [Integration Update](#integration-object) Gateway events.
+
+###### JSON Params
+
+| Field                | Type    | Description                                                                    |
+| -------------------- | ------- | ------------------------------------------------------------------------------ |
+| expire_behavior?     | integer | The [behavior of expiring subscribers](#integration-expire-behavior)           |
+| expire_grace_period? | integer | The grace period before expiring subscribers (one of 1, 3, 7, 14, 30, in days) |
+| enable_emoticons?    | boolean | Whether emoticons should be synced for this integration (Twitch only)          |
+
+<RouteHeader method="DELETE" url="/guilds/{guild.id}/integrations/{integration.id}" supportsAuditReason>
+  Delete Guild Integration
+</RouteHeader>
+
+Removes the given integration ID from the guild. Deletes any associated webhooks and kicks the associated bot (if there is one). Requires the `MANAGE_GUILD` permission. Returns a 204 empty response on success. Fires [Guild Integrations Update](/topics/gateway-events#guild-integrations-update), [Integration Delete](/topics/gateway-events#integration-delete), and optionally [Guild Member Remove](/topics/gateway-events#guild-member-remove) and [Webhooks Update](/topics/gateway-events#webhooks-update) Gateway events.
+
+<RouteHeader method="POST" url="/guilds/{guild.id}/migrate-command-scope">
+  Migrate Guild Command Scope
+</RouteHeader>
+
+Migrates all Discord application integrations in the guild to the [`applications.commands` OAuth2 scope](/topics/oauth2#oauth2-scopes). Requires the `MANAGE_GUILD` permission. Fires a [Guild Integrations Update](/topics/gateway-events#guild-integrations-update) and multiple [Integration Update](/topics/gateway-events#integration-update) Gateway events.
+
+###### Response Body
+
+| Field                             | Type             | Description                                                                    |
+| --------------------------------- | ---------------- | ------------------------------------------------------------------------------ |
+| integration_ids_with_app_commands | array[snowflake] | The IDs of migrated integrations that now have application commands registered |
+
+<RouteHeader method="GET" url="/users/@me/guilds/integration-application-ids">
+  Get Guild Integration Application IDs
+</RouteHeader>
+
+Returns a mapping of guild IDs to lists of application IDs attached to the integrations in the current user's guilds.
+
+###### Example Response
+
+```json
+{
+  "81384788765712384": [
+    "157858575924985856",
+    "157889000391180288",
+    "157873248346832897",
+    "157947794294833152",
+    "173805066229252096"
+  ],
+  "1046920999469330512": []
+}
+```
+
+<RouteHeader method="GET" url="/channels/{channel.id}/integrations">
+  Get Channel Integrations
+</RouteHeader>
+
+Returns a list of [integration](#integration-object) objects for the private channel.
+
+<Alert type="info">
+
+This endpoint returns a maximum of 50 integrations. If a channel has more integrations, they cannot be accessed.
+
+</Alert>
+
+<RouteHeader method="DELETE" url="/channels/{channel.id}/integrations/{integration.id}" supportsAuditReason>
+  Delete Channel Integration
+</RouteHeader>
+
+Removes the given integration ID from the channel. Returns a 204 empty response on success. Fires an [Integration Delete](#integration-object) Gateway event.
+
+<RouteHeader method="POST" url="/integrations/{integration.id}/join">
+  Join Integration Guild
+</RouteHeader>
+
+Joins the user to the given integration ID's guild. Returns a 204 empty response on success. Fires a [Guild Create](/topics/gateway-events#guild-create) Gateway event.
+
+<Alert type="info">
+
+This endpoint is only usable with [integrations found on the user's connections](/resources/connected-accounts#connection-object).
+
+</Alert>
+
+<RouteHeader method="GET" url="/integrations/tenor/search">
+  Search Tenor GIFs
+</RouteHeader>
+
+Returns a list of up to 10 [GIFs sourced from Tenor](#tenor-gif-structure) based on the provided query.
+
+###### Query String Parameters
+
+| Field | Type   | Description             |
+| ----- | ------ | ----------------------- |
+| q     | string | The search query to use |
+
+###### Tenor GIF Structure
+
+| Field  | Type    | Description                        |
+| ------ | ------- | ---------------------------------- |
+| type   | string  | The type of the GIF (always `gif`) |
+| url    | string  | The provider source URL of the GIF |
+| src    | string  | The media URL of the GIF           |
+| width  | integer | Width of image                     |
+| height | integer | Height of image                    |
+
+###### Example Response
+
+```json
+[
+  {
+    "type": "gif",
+    "url": "https://tenor.com/bQ3Du.gif",
+    "src": "https://media.tenor.com/RbG_9Eh9KLoAAAAS/alien-alien-reveal.gif",
+    "width": 100,
+    "height": 90
+  }
+]
+```
+
+<RouteHeader method="GET" url="/gifs/trending-search">
+  Get Trending GIF Search Terms
+</RouteHeader>
+
+Returns a list of the top trending search terms.
+
+###### Query String Parameters
+
+| Field      | Type    | Description                                                    |
+| ---------- | ------- | -------------------------------------------------------------- |
+| limit? ^1^ | integer | The maximum number of search terms to return (1-50, default 5) |
+| locale?    | string  | The locale to use in search results (default `en-US`)          |
+
+^1^ The limit is only a suggestion; the API may return fewer GIFs.
+
+<RouteHeader method="GET" url="/gifs/suggest" unauthenticated>
+  Get Suggested GIF Search Terms
+</RouteHeader>
+
+Returns a list of recommended search terms based on the provided query.
+
+###### Query String Parameters
+
+| Field      | Type    | Description                                                     |
+| ---------- | ------- | --------------------------------------------------------------- |
+| q          | string  | The search query to use                                         |
+| limit? ^1^ | integer | The maximum number of search terms to return (1-50, default 20) |
+| locale?    | string  | The locale to use in search results (default `en-US`)           |
+
+^1^ The limit is only a suggestion; the API may return fewer GIFs.
+
+<RouteHeader method="GET" url="/gifs/search" unauthenticated>
+  Search GIFs
+</RouteHeader>
+
+Returns a list of [GIF](#gif-structure) objects based on the provided query.
+
+###### Query String Parameters
+
+| Field         | Type    | Description                                           |
+| ------------- | ------- | ----------------------------------------------------- |
+| q             | string  | The search query to use                               |
+| limit? ^1^    | integer | The maximum number of GIFs to return (20-500)         |
+| media_format? | string  | The media format to use (default `mediumgif`)         |
+| locale?       | string  | The locale to use in search results (default `en-US`) |
+
+^1^ The limit is only a suggestion; the API may return fewer GIFs.
+
+<RouteHeader method="GET" url="/gifs/trending" unauthenticated>
+  Get Trending GIF Categories
+</RouteHeader>
+
+Returns trending GIF categories and their associated preview GIFs.
+
+###### Query String Parameters
+
+| Field         | Type   | Description                                           |
+| ------------- | ------ | ----------------------------------------------------- |
+| media_format? | string | The media format to use (default `mediumgif`)         |
+| locale?       | string | The locale to use in search results (default `en-US`) |
+
+###### Response Body
+
+| Field      | Type                                                  | Description                            |
+| ---------- | ----------------------------------------------------- | -------------------------------------- |
+| categories | array[[GIF category](#gif-category-structure) object] | The trending GIF categories            |
+| gifs       | array[[GIF](#gif-structure) object]                   | A trending GIF to use as a placeholder |
+
+###### GIF Category Structure
+
+| Field | Type   | Description                    |
+| ----- | ------ | ------------------------------ |
+| name  | string | The name of the category       |
+| src   | string | The media URL of a preview GIF |
+
+###### Example Response
+
+```json
+{
+  "categories": [
+    {
+      "name": "whatever",
+      "src": "https://media.tenor.com/97c0UK_cAHMAAAAd/whatever-sassy.gif"
+    }
+  ],
+  "gifs": [
+    {
+      "id": "16750982996130936929",
+      "title": "",
+      "url": "https://tenor.com/view/peace-out-peace-sign-peace-ice-age-eddie-gif-16750982996130936929",
+      "src": "https://media.tenor.com/6HdySNL-OGEAAAAC/peace-out-peace-sign.gif",
+      "gif_src": "https://media.tenor.com/6HdySNL-OGEAAAAC/peace-out-peace-sign.gif",
+      "width": 498,
+      "height": 498,
+      "preview": "https://media.tenor.com/6HdySNL-OGEAAAAD/peace-out-peace-sign.png"
+    }
+  ]
+}
+```
+
+<RouteHeader method="GET" url="/gifs/trending-gifs" unauthenticated>
+  Get Trending GIFs
+</RouteHeader>
+
+Returns a list of [GIF](#gif-structure) objects that are currently trending.
+
+###### Query String Parameters
+
+| Field         | Type    | Description                                           |
+| ------------- | ------- | ----------------------------------------------------- |
+| limit? ^1^    | integer | The maximum number of GIFs to return (20-500)         |
+| media_format? | string  | The media format to use (default `mediumgif`)         |
+| locale?       | string  | The locale to use in search results (default `en-US`) |
+
+^1^ The limit is only a suggestion; the API may return fewer GIFs.
+
+<RouteHeader method="POST" url="/gifs/select">
+  Track Selected GIF
+</RouteHeader>
+
+Tracks the selection of a GIF by the user. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field | Type   | Description                           |
+| ----- | ------ | ------------------------------------- |
+| id    | string | The ID of the selected GIF            |
+| q     | string | The search query used to find the GIF |

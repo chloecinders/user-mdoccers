@@ -1,0 +1,1852 @@
+# Applications
+
+Applications are Discord entities that represent games, services, and other integrations that can be added to a guild. Applications can be used for a variety of purposes, including OAuth2 authentication, rich presence, bots, and much more.
+
+### Application Object
+
+###### Application Structure
+
+| Field                                        | Type                                                                                                                      | Description                                                                                                                                                                                                                      |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                                           | snowflake                                                                                                                 | The ID of the application                                                                                                                                                                                                        |
+| name                                         | string                                                                                                                    | The name of the application                                                                                                                                                                                                      |
+| description                                  | string                                                                                                                    | The description of the application                                                                                                                                                                                               |
+| icon                                         | ?string                                                                                                                   | The application's [icon hash](/reference#cdn-formatting)                                                                                                                                                                         |
+| cover_image?                                 | string                                                                                                                    | The application's default rich presence invite [cover image hash](/reference#cdn-formatting)                                                                                                                                     |
+| splash?                                      | string                                                                                                                    | The application's [splash hash](/reference#cdn-formatting)                                                                                                                                                                       |
+| type                                         | ?integer                                                                                                                  | The [type of the application](#application-type), if any                                                                                                                                                                         |
+| flags                                        | integer                                                                                                                   | The [application's flags](#application-flags) (including private)                                                                                                                                                                |
+| primary_sku_id? ^1^                          | snowflake                                                                                                                 | The ID of the application's primary SKU (game, application subscription, etc.)                                                                                                                                                   |
+| verify_key                                   | string                                                                                                                    | The hex encoded client public key for verification in interactions and the GameSDK's `GetTicket`                                                                                                                                 |
+| guild_id?                                    | snowflake                                                                                                                 | The ID of the guild linked to the application                                                                                                                                                                                    |
+| eula_id?                                     | snowflake                                                                                                                 | The ID of the EULA required to play the application's game                                                                                                                                                                       |
+| slug? ^1^                                    | string                                                                                                                    | The URL slug that links to the primary store page of the application                                                                                                                                                             |
+| aliases?                                     | array[string]                                                                                                             | Other names the application's game is associated with                                                                                                                                                                            |
+| executables?                                 | array[[application executable](#application-executable-object) object]                                                    | The unique executables of the application's game                                                                                                                                                                                 |
+| third_party_skus?                            | array[[application SKU](#application-sku-object) object]                                                                  | The third party SKUs of the application's game                                                                                                                                                                                   |
+| hook                                         | boolean                                                                                                                   | Whether the Discord client is allowed to hook into the application's game directly                                                                                                                                               |
+| overlay?                                     | boolean                                                                                                                   | Whether the application's game supports the [Discord overlay](https://support.discord.com/hc/en-us/articles/217659737-Game-Overlay-101) (default false)                                                                          |
+| overlay_methods?                             | integer                                                                                                                   | The [methods of overlaying](#overlay-method-flags) that the application's game supports                                                                                                                                          |
+| overlay_warn?                                | boolean                                                                                                                   | Whether the [Discord overlay](https://support.discord.com/hc/en-us/articles/217659737-Game-Overlay-101) is known to be problematic with this application's game (default false)                                                  |
+| overlay_compatibility_hook?                  | boolean                                                                                                                   | Whether to use the compatibility hook for the overlay (default false)                                                                                                                                                            |
+| bot?                                         | partial [user](/resources/user#user-object) object                                                                        | The bot attached to this application                                                                                                                                                                                             |
+| owner                                        | partial [user](/resources/user#user-object) object                                                                        | The owner of the application                                                                                                                                                                                                     |
+| team? ^2^                                    | ?[team](/resources/team#team-object) object                                                                               | The team that owns the application                                                                                                                                                                                               |
+| developers?                                  | array[[company](/resources/team#company-object) object]                                                                   | The companies that developed the application                                                                                                                                                                                     |
+| publishers?                                  | array[[company](/resources/team#company-object) object]                                                                   | The companies that published the application                                                                                                                                                                                     |
+| rpc_origins?                                 | array[string]                                                                                                             | The whitelisted RPC origin URLs for the application, if RPC is enabled                                                                                                                                                           |
+| redirect_uris                                | array[string]                                                                                                             | The whitelisted URLs for redirecting to during [OAuth2 authorization](/topics/oauth2) (max 10)                                                                                                                                   |
+| deeplink_uri?                                | string                                                                                                                    | The URL used for deep linking during [OAuth2 authorization](/topics/oauth2) on mobile devices                                                                                                                                    |
+| integration_public                           | boolean                                                                                                                   | Whether only the application owner can add the integration                                                                                                                                                                       |
+| integration_require_code_grant               | boolean                                                                                                                   | Whether the integration will only be added upon completion of a full OAuth2 token exchange                                                                                                                                       |
+| bot_public? ^3^ **(deprecated)**             | boolean                                                                                                                   | Whether only the application owner can add the bot                                                                                                                                                                               |
+| bot_require_code_grant? ^3^ **(deprecated)** | boolean                                                                                                                   | Whether the application's bot will only be added upon completion of a full OAuth2 token exchange                                                                                                                                 |
+| bot_disabled?                                | boolean                                                                                                                   | Whether the application's bot is disabled by Discord (default false)                                                                                                                                                             |
+| bot_quarantined?                             | boolean                                                                                                                   | Whether the application's bot is [quarantined](https://support.discord.com/hc/en-us/articles/6461420677527-Limited-Access-FAQ) by Discord; quarantined bots cannot join more guilds or start new direct messages (default false) |
+| approximate_guild_count?                     | integer                                                                                                                   | Approximate count of guilds the application's bot is in                                                                                                                                                                          |
+| approximate_user_install_count               | integer                                                                                                                   | Approximate count of users that have authorized the application with the `applications.commands` scope                                                                                                                           |
+| approximate_user_authorization_count         | integer                                                                                                                   | Approximate count of users that have OAuth2 authorizations for the application                                                                                                                                                   |
+| internal_guild_restriction                   | integer                                                                                                                   | What guilds the [application can be authorized in](#internal-guild-restriction)                                                                                                                                                  |
+| terms_of_service_url?                        | string                                                                                                                    | The URL to the application's terms of service                                                                                                                                                                                    |
+| privacy_policy_url?                          | string                                                                                                                    | The URL to the application's privacy policy                                                                                                                                                                                      |
+| role_connections_verification_url            | ?string                                                                                                                   | The role connection verification entry point of the integration; when configured, this will render the application as a verification method in guild role verification configuration                                             |
+| interactions_endpoint_url                    | string                                                                                                                    | The URL of the application's [interactions endpoint](/interactions/receiving-and-responding#receiving-an-interaction)                                                                                                            |
+| interactions_version                         | integer                                                                                                                   | The [version of the application's interactions endpoint implementation](#application-interactions-version)                                                                                                                       |
+| interactions_event_types ^4^                 | array[string]                                                                                                             | The enabled [event webhook types](#event-webhooks-type) to send to the interaction endpoint                                                                                                                                      |
+| event_webhooks_status?                       | integer                                                                                                                   | Whether [event webhooks are enabled](#event-webhooks-status)                                                                                                                                                                     |
+| event_webhooks_url?                          | string                                                                                                                    | The URL of the application's event webhooks endpoint                                                                                                                                                                             |
+| event_webhooks_types?                        | array[string]                                                                                                             | The enabled [event webhook types](#event-webhooks-type) to send to the event webhooks endpoint                                                                                                                                   |
+| explicit_content_filter                      | integer                                                                                                                   | [Whether uploaded media content](#explicit-content-filter-level) used in application commands is scanned and deleted for explicit content                                                                                        |
+| tags?                                        | array[string]                                                                                                             | Tags describing the content and functionality of the application (max 20 characters, max 5)                                                                                                                                      |
+| install_params?                              | [application install params](#application-install-params-object) object                                                   | The default in-app authorization link for the integration                                                                                                                                                                        |
+| custom_install_url?                          | string                                                                                                                    | The default custom authorization link for the integration                                                                                                                                                                        |
+| integration_types_config?                    | map[integer, ?[application integration type configuration](#application-integration-type-configuration-structure) object] | The configuration for each [integration type](#application-integration-type) supported by the application                                                                                                                        |
+| is_verified                                  | boolean                                                                                                                   | Whether the application is verified                                                                                                                                                                                              |
+| verification_state                           | integer                                                                                                                   | The current [verification state](#application-verification-state) of the application                                                                                                                                             |
+| store_application_state                      | integer                                                                                                                   | The current [store approval state](#store-application-state) of the commerce application                                                                                                                                         |
+| rpc_application_state                        | integer                                                                                                                   | The current [RPC approval state](#rpc-application-state) of the application                                                                                                                                                      |
+| creator_monetization_state ^5^               | integer                                                                                                                   | The current guild [creator monetization state](#creator-monetization-state) of the application                                                                                                                                   |
+| is_discoverable                              | boolean                                                                                                                   | Whether the application is discoverable in the application directory                                                                                                                                                             |
+| discoverability_state                        | integer                                                                                                                   | The current [application directory discoverability state](#application-discoverability-state) of the application                                                                                                                 |
+| discovery_eligibility_flags                  | integer                                                                                                                   | The current [application directory eligibility flags](#application-discovery-eligibility-flags) for the application                                                                                                              |
+| is_monetized                                 | boolean                                                                                                                   | Whether the application has monetization enabled                                                                                                                                                                                 |
+| storefront_available                         | boolean                                                                                                                   | Whether the application has public subscriptions or products available for purchase                                                                                                                                              |
+| monetization_state                           | integer                                                                                                                   | The current [application monetization state](#application-monetization-state) of the application                                                                                                                                 |
+| monetization_eligibility_flags? ^2^          | integer                                                                                                                   | The current [application monetization eligibility flags](#application-monetization-eligibility-flags) for the application                                                                                                        |
+| max_participants? ^6^                        | integer                                                                                                                   | The maximum possible participants in the application's embedded activity (-1 for no limit)                                                                                                                                       |
+| embedded_activity_config? ^6^                | [embedded activity config](#embedded-activity-config-object) object                                                       | The configuration for the application's embedded activity                                                                                                                                                                        |
+
+^1^ The `primary_sku_id` and `slug` fields can be combined to form a URL to the application's primary store page like so: `https://discord.com/store/skus/{primary_sku_id}/{slug}`.
+
+^2^ Only present when fetched from the [Get Current Application](#get-current-application), [Get Application](#get-application), or [Transfer Application](#transfer-application) endpoints.
+
+^3^ In some cases, these fields may still be provided instead of `integration_public` and `integration_require_code_grant`. These fields will not be present if the application does not have a bot.
+
+^4^ The sending of Gateway events over the interactions endpoint requires [interactions version 2](#application-interactions-version).
+
+^5^ Only applicable for applications of type [`CREATOR_MONETIZATION`](#application-type).
+
+^6^ Only applicable for applications with the [`EMBEDDED` flag](#application-flags).
+
+###### Partial Application Structure
+
+<Alert type="warn">
+
+Partial applications may have any combination of fields, depending on the context in which they are provided. Certain data may be included or omitted depending on what data is needed for the given operation. Fields [marked as required](/reference#nullable-and-optional-resource-fields) will always be present.
+
+Further complicating things, some optional fields may be omitted if their value is `null`, even if the specific partial does include this data.
+
+</Alert>
+
+| Field                                        | Type                                                                                                                      | Description                                                                                                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                                           | snowflake                                                                                                                 | The ID of the application                                                                                                                                                       |
+| name                                         | string                                                                                                                    | The name of the application                                                                                                                                                     |
+| description                                  | string                                                                                                                    | The description of the application                                                                                                                                              |
+| icon                                         | ?string                                                                                                                   | The application's [icon hash](/reference#cdn-formatting)                                                                                                                        |
+| cover_image?                                 | string                                                                                                                    | The application's default rich presence invite [cover image hash](/reference#cdn-formatting)                                                                                    |
+| splash?                                      | string                                                                                                                    | The application's [splash hash](/reference#cdn-formatting)                                                                                                                      |
+| type                                         | ?integer                                                                                                                  | The [type of the application](#application-type), if any                                                                                                                        |
+| flags                                        | integer                                                                                                                   | The [application's flags](#application-flags) (including private)                                                                                                               |
+| primary_sku_id? ^1^                          | snowflake                                                                                                                 | The ID of the application's primary SKU (game, application subscription, etc.)                                                                                                  |
+| verify_key                                   | string                                                                                                                    | The hex encoded client public key for verification in interactions and the GameSDK's `GetTicket`                                                                                |
+| guild_id?                                    | snowflake                                                                                                                 | The ID of the guild linked to the application                                                                                                                                   |
+| guild? ^2^                                   | partial [guild](/resources/guild#guild-object) object                                                                     | The guild linked to the application                                                                                                                                             |
+| eula_id?                                     | snowflake                                                                                                                 | The ID of the EULA required to play the application's game {/* todo: link this here */}                                                                                         |
+| slug? ^1^                                    | string                                                                                                                    | The URL slug that links to the primary store page of the application                                                                                                            |
+| aliases?                                     | array[string]                                                                                                             | Other names the application's game is associated with                                                                                                                           |
+| executables?                                 | array[[application executable](#application-executable-object) object]                                                    | The unique executables of the application's game                                                                                                                                |
+| third_party_skus?                            | array[[application SKU](#application-sku-object) object]                                                                  | The third party SKUs of the application's game                                                                                                                                  |
+| hook                                         | boolean                                                                                                                   | Whether the Discord client is allowed to hook into the application's game directly                                                                                              |
+| overlay?                                     | boolean                                                                                                                   | Whether the application's game supports the [Discord overlay](https://support.discord.com/hc/en-us/articles/217659737-Game-Overlay-101) (default false)                         |
+| overlay_methods?                             | integer                                                                                                                   | The [methods of overlaying](#overlay-method-flags) that the application's game supports                                                                                         |
+| overlay_warn?                                | boolean                                                                                                                   | Whether the [Discord overlay](https://support.discord.com/hc/en-us/articles/217659737-Game-Overlay-101) is known to be problematic with this application's game (default false) |
+| overlay_compatibility_hook?                  | boolean                                                                                                                   | Whether to use the compatibility hook for the overlay (default false)                                                                                                           |
+| bot?                                         | partial [user](/resources/user#user-object) object                                                                        | The bot attached to this application                                                                                                                                            |
+| team? ^3^                                    | ?[team](/resources/team#team-object) object                                                                               | The team that owns the application                                                                                                                                              |
+| developers?                                  | array[[company](/resources/team#company-object) object]                                                                   | The companies that developed the application                                                                                                                                    |
+| publishers?                                  | array[[company](/resources/team#company-object) object]                                                                   | The companies that published the application                                                                                                                                    |
+| rpc_origins?                                 | array[string]                                                                                                             | The whitelisted RPC origin URLs for the application, if RPC is enabled                                                                                                          |
+| deeplink_uri?                                | string                                                                                                                    | The URL used for deep linking during [OAuth2 authorization](/topics/oauth2) on mobile devices                                                                                   |
+| integration_public?                          | boolean                                                                                                                   | Whether only the application owner can add the integration                                                                                                                      |
+| integration_require_code_grant?              | boolean                                                                                                                   | Whether the integration will only be added upon completion of a full OAuth2 token exchange                                                                                      |
+| bot_public? ^4^ **(deprecated)**             | boolean                                                                                                                   | Whether only the application owner can add the bot                                                                                                                              |
+| bot_require_code_grant? ^4^ **(deprecated)** | boolean                                                                                                                   | Whether the application's bot will only be added upon completion of a full OAuth2 token exchange                                                                                |
+| terms_of_service_url?                        | ?string                                                                                                                   | The URL to the application's terms of service                                                                                                                                   |
+| privacy_policy_url?                          | ?string                                                                                                                   | The URL to the application's privacy policy                                                                                                                                     |
+| tags?                                        | array[string]                                                                                                             | Tags describing the content and functionality of the application (max 20 characters, max 5)                                                                                     |
+| install_params?                              | [application install params](#application-install-params-object) object                                                   | The default in-app authorization link for the integration                                                                                                                       |
+| custom_install_url?                          | string                                                                                                                    | The default custom authorization link for the integration                                                                                                                       |
+| integration_types_config?                    | map[integer, ?[application integration type configuration](#application-integration-type-configuration-structure) object] | The configuration for each [integration type](#application-integration-type) supported by the application                                                                       |
+| is_verified                                  | boolean                                                                                                                   | Whether the application is verified                                                                                                                                             |
+| is_discoverable                              | boolean                                                                                                                   | Whether the application is discoverable in the application directory                                                                                                            |
+| is_monetized                                 | boolean                                                                                                                   | Whether the application has monetization enabled                                                                                                                                |
+| storefront_available                         | boolean                                                                                                                   | Whether the application has public subscriptions or products available for purchase                                                                                             |
+| max_participants? ^5^                        | integer                                                                                                                   | The maximum possible participants in the application's embedded activity (-1 for no limit)                                                                                      |
+| embedded_activity_config? ^5^                | [embedded activity config](#embedded-activity-config-object) object                                                       | The configuration for the application's embedded activity                                                                                                                       |
+
+^1^ The `primary_sku_id` and `slug` fields can be combined to form a URL to the application's primary store page like so: `https://discord.com/store/skus/{primary_sku_id}/{slug}`.
+
+^2^ Only present when fetched from the [Get Partial Application](#get-partial-application) endpoint with `with_guild` set to `true`. The guild must be discoverable.
+
+^3^ Only present when fetched from the [Get Guild Applications](#get-guild-applications) endpoint. You must own the application or be a member of the owning team to receive this information.
+
+^4^ In some cases, these fields may still be provided instead of `integration_public` and `integration_require_code_grant`. These fields will not be present if the application does not have a bot.
+
+^5^ Only applicable for applications with the [`EMBEDDED` flag](#application-flags).
+
+###### Application Type
+
+| Value | Name                 | Description                                                                       |
+| ----- | -------------------- | --------------------------------------------------------------------------------- |
+| 1     | GAME                 | A game integrating with Discord                                                   |
+| ~~2~~ | ~~MUSIC~~            | ~~A music service integrating with Discord~~                                      |
+| 3 ^1^ | TICKETED_EVENTS      | A limited application used for ticketed event SKUs                                |
+| 4 ^1^ | CREATOR_MONETIZATION | A limited application used for creator monetization (e.g. role subscription) SKUs |
+
+^1^ Applications of these types cannot be used through most of the regular applications APIs outlined here.
+
+###### Application Flags
+
+| Value       | Name                                   | Description                                                                                                                                                | Public  |
+| ----------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 1 << 1      | EMBEDDED_RELEASED                      | Embedded application is released to the public (see also [release phases](#embedded-activity-release-phase))                                               | Yes     |
+| 1 << 2      | MANAGED_EMOJI                          | Application can create managed emoji                                                                                                                       | No      |
+| 1 << 3      | EMBEDDED_IAP                           | Embedded application can use in-app purchases                                                                                                              | Yes     |
+| 1 << 4      | GROUP_DM_CREATE                        | Application can create group DMs without limit                                                                                                             | No      |
+| ~~1 << 5~~  | ~~RPC_PRIVATE_BETA~~                   | ~~Application can access the client RPC server~~                                                                                                           | ~~No~~  |
+| 1 << 6      | AUTO_MODERATION_RULE_CREATE_BADGE      | Application has created 100+ AutoMod rules                                                                                                                 | Yes     |
+| 1 << 7      | GAME_PROFILE_DISABLED                  | Application has its game profile page disabled                                                                                                             | Yes     |
+| ~~1 << 8~~  | ~~ALLOW_ASSETS~~                       | ~~Application can use activity assets~~                                                                                                                    | ~~No~~  |
+| 1 << 8      | PUBLIC_OAUTH2_CLIENT                   | Application's OAuth2 credentials are considered public and a client secret is not required                                                                 | Yes     |
+| ~~1 << 9~~  | ~~ALLOW_ACTIVITY_ACTION_SPECTATE~~     | ~~Application can enable spectating activities~~                                                                                                           | ~~No~~  |
+| ~~1 << 9~~  | ~~CONTEXTLESS_ACTIVITY~~               | ~~Embedded application's activity can be launched without a context~~                                                                                      | ~~Yes~~ |
+| ~~1 << 10~~ | ~~ALLOW_ACTIVITY_ACTION_JOIN_REQUEST~~ | ~~Application can enable activity join requests~~                                                                                                          | ~~No~~  |
+| 1 << 10     | SOCIAL_LAYER_INTEGRATION_LIMITED       | Application has limited access to the social layer SDK                                                                                                     | Yes     |
+| ~~1 << 11~~ | ~~RPC_HAS_CONNECTED~~                  | ~~Application has accessed the client RPC server before~~                                                                                                  | ~~Yes~~ |
+| 1 << 12     | GATEWAY_PRESENCE                       | Intent required for bots in **100 or more guilds** to receive [Presence Update](/topics/gateway-events#presence-update) Gateway events                     | Yes     |
+| 1 << 13     | GATEWAY_PRESENCE_LIMITED               | Intent required for bots in **under 100 guilds** to receive [Presence Update](/topics/gateway-events#presence-update) Gateway events                       | Yes     |
+| 1 << 14     | GATEWAY_GUILD_MEMBERS                  | Intent required for bots in **100 or more guilds** to receive guild member-related events like [Guild Member Add](/topics/gateway-events#guild-member-add) | Yes     |
+| 1 << 15     | GATEWAY_GUILD_MEMBERS_LIMITED          | Intent required for bots in **under 100 guilds** to receive guild member-related events like [Guild Member Add](/topics/gateway-events#guild-member-add)   | Yes     |
+| 1 << 16     | VERIFICATION_PENDING_GUILD_LIMIT       | Indicates unusual growth of an application that prevents verification                                                                                      | Yes     |
+| 1 << 17     | EMBEDDED                               | Application can be embedded within the Discord client                                                                                                      | Yes     |
+| 1 << 18     | GATEWAY_MESSAGE_CONTENT                | Intent required for bots in **100 or more guilds** to receive [message content](https://support-dev.discord.com/hc/en-us/articles/4404772028055)           | Yes     |
+| 1 << 19     | GATEWAY_MESSAGE_CONTENT_LIMITED        | Intent required for bots in **under 100 guilds** to receive [message content](https://support-dev.discord.com/hc/en-us/articles/4404772028055)             | Yes     |
+| 1 << 20     | EMBEDDED_FIRST_PARTY                   | Embedded application is created by Discord                                                                                                                 | Yes     |
+| 1 << 21     | APPLICATION_COMMAND_MIGRATED           | Unknown                                                                                                                                                    | Yes     |
+| 1 << 23     | APPLICATION_COMMAND_BADGE              | Application has registered global application commands                                                                                                     | Yes     |
+| 1 << 24     | ACTIVE                                 | Application has had at least one global application command used in the last 30 days                                                                       | No      |
+| 1 << 25     | ACTIVE_GRACE_PERIOD ^1^                | Application has not had any global application commands used in the last 30 days and has lost the `ACTIVE` flag                                            | No      |
+| 1 << 26     | IFRAME_MODAL                           | Application can use IFrames within modals                                                                                                                  | Yes     |
+| 1 << 27     | SOCIAL_LAYER_INTEGRATION               | Application can use the social layer SDK                                                                                                                   | Yes     |
+| 1 << 29     | PROMOTED                               | Application is promoted by Discord in the application directory                                                                                            | Yes     |
+| 1 << 30     | PARTNER                                | Application is a Discord partner                                                                                                                           | Yes     |
+
+^1^ The active grace period lasts for 30 days, after which the [`ACTIVE_DEVELOPER` user flag](/resources/user#user-flags) will be removed from developers that claimed it.
+
+###### Overlay Method Flags
+
+| Value  | Name           | Description                            |
+| ------ | -------------- | -------------------------------------- |
+| 1 << 0 | OUT_OF_PROCESS | Overlay can be rendered out of process |
+
+###### Internal Guild Restriction
+
+| Value | Name               | Description                                                                                                                            |
+| ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | JOIN_ALL           | The application can be authorized in any guild                                                                                         |
+| 2     | JOIN_EXTERNAL_ONLY | The application can only be authorized in guilds without the [`INTERNAL_EMPLOYEE_ONLY` guild feature](/resources/guild#guild-features) |
+| 3     | JOIN_INTERNAL_ONLY | The application can only be authorized in guilds with the [`INTERNAL_EMPLOYEE_ONLY` guild feature](/resources/guild#guild-features)    |
+
+###### Application Interactions Version
+
+| Value | Name      | Description                                                                                                  |
+| ----- | --------- | ------------------------------------------------------------------------------------------------------------ |
+| 1     | VERSION_1 | Only [Interaction Create](/topics/gateway-events#interaction-create) events are sent as documented (default) |
+| 2     | VERSION_2 | A selection of chosen events are sent                                                                        |
+
+###### Event Webhooks Status
+
+| Value | Name     | Description                 |
+| ----- | -------- | --------------------------- |
+| 1     | DISABLED | Event webhooks are disabled |
+| 2     | ENABLED  | Event webhooks are enabled  |
+
+###### Event Webhooks Type
+
+| Value                  | Description                                 |
+| ---------------------- | ------------------------------------------- |
+| APPLICATION_AUTHORIZED | Sent when a user authorizes the application |
+| ENTITLEMENT_CREATE     | Sent when a user creates an entitlement     |
+| QUEST_USER_ENROLLMENT  | Sent when a user enrolls in a quest         |
+
+###### Explicit Content Filter Level
+
+| Value | Name    | Description                                                                                    |
+| ----- | ------- | ---------------------------------------------------------------------------------------------- |
+| 0     | INHERIT | Inherits the guild's [explicit content filter](/resources/guild#explicit-content-filter-level) |
+| 1     | ALWAYS  | Media content will always be scanned                                                           |
+
+###### Application Verification State
+
+| Value | Name        | Description                                                |
+| ----- | ----------- | ---------------------------------------------------------- |
+| 1     | INELIGIBLE  | This application is ineligible for verification            |
+| 2     | UNSUBMITTED | This application has not yet been applied for verification |
+| 3     | SUBMITTED   | This application has submitted a verification request      |
+| 4     | SUCCEEDED   | This application has been verified                         |
+
+###### Store Application State
+
+| Value | Name      | Description                                                                                |
+| ----- | --------- | ------------------------------------------------------------------------------------------ |
+| 1     | NONE      | This application does not have a commerce license                                          |
+| 2     | PAID      | This application has a commerce license but has not yet submitted a store approval request |
+| 3     | SUBMITTED | This application has submitted a store approval request                                    |
+| 4     | APPROVED  | This application has been approved for the store                                           |
+| 5     | REJECTED  | This application has been rejected from the store                                          |
+
+###### RPC Application State
+
+| Value | Name        | Description                                              |
+| ----- | ----------- | -------------------------------------------------------- |
+| 0     | DISABLED    | This application does not have access to RPC             |
+| 1     | UNSUBMITTED | This application has not yet been applied for RPC access |
+| 2     | SUBMITTED   | This application has submitted a RPC access request      |
+| 3     | APPROVED    | This application has been approved for RPC access        |
+| 4     | REJECTED    | This application has been rejected from RPC access       |
+
+###### Application Discoverability State
+
+| Value | Name             | Description                                                                   |
+| ----- | ---------------- | ----------------------------------------------------------------------------- |
+| 1     | INELIGIBLE       | This application is ineligible for the application directory                  |
+| 2     | NOT_DISCOVERABLE | This application is not listed in the application directory                   |
+| 3     | DISCOVERABLE     | This application is listed in the application directory                       |
+| 4     | FEATUREABLE      | This application is featurable in the application directory                   |
+| 5     | BLOCKED          | This application has been blocked from appearing in the application directory |
+
+###### Application Discovery Eligibility Flags
+
+| Value   | Name                    | Description                                                                                                                                                          |
+| ------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 << 0  | VERIFIED                | Application is verified                                                                                                                                              |
+| 1 << 1  | TAG                     | Application has at least one tag set                                                                                                                                 |
+| 1 << 2  | DESCRIPTION             | Application has a description                                                                                                                                        |
+| 1 << 3  | TERMS_OF_SERVICE        | Application has terms of service set                                                                                                                                 |
+| 1 << 4  | PRIVACY_POLICY          | Application has a privacy policy set                                                                                                                                 |
+| 1 << 5  | INSTALL_PARAMS          | Application has a custom install URL or install parameters                                                                                                           |
+| 1 << 6  | SAFE_NAME               | Application's name is safe for work                                                                                                                                  |
+| 1 << 7  | SAFE_DESCRIPTION        | Application's description is safe for work                                                                                                                           |
+| 1 << 8  | APPROVED_COMMANDS       | Application has the [message content intent](/topics/gateway#message-content-intent) approved or utilizes [application commands](/interactions/application-commands) |
+| 1 << 9  | SUPPORT_GUILD           | Application has a support guild set                                                                                                                                  |
+| 1 << 10 | SAFE_COMMANDS           | Application's commands are safe for work                                                                                                                             |
+| 1 << 11 | MFA                     | Application's owner has MFA enabled                                                                                                                                  |
+| 1 << 12 | SAFE_DIRECTORY_OVERVIEW | Application's directory long description is safe for work                                                                                                            |
+| 1 << 13 | SUPPORTED_LOCALES       | Application has at least one supported locale set                                                                                                                    |
+| 1 << 14 | SAFE_SHORT_DESCRIPTION  | Application's directory short description is safe for work                                                                                                           |
+| 1 << 15 | SAFE_ROLE_CONNECTIONS   | Application's role connections metadata is safe for work                                                                                                             |
+
+###### Application Monetization State
+
+| Value | Name    | Description                                        |
+| ----- | ------- | -------------------------------------------------- |
+| 1     | NONE    | This application does not have monetization set up |
+| 2     | ENABLED | This application has monetization set up           |
+| 3     | BLOCKED | This application has been blocked from monetizing  |
+
+###### Creator Monetization State
+
+The values of this enum are currently unknown. Help us by figuring them out and [submitting a pull request](https://github.com/discord-userdoccers/discord-userdoccers/edit/master/pages/resources/application.mdx)!
+
+###### Application Monetization Eligibility Flags
+
+| Value   | Name                        | Description                                                                                                                                                          |
+| ------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 << 0  | VERIFIED                    | Application is verified                                                                                                                                              |
+| 1 << 1  | HAS_TEAM                    | Application is owned by a team                                                                                                                                       |
+| 1 << 2  | APPROVED_COMMANDS           | Application has the [message content intent](/topics/gateway#message-content-intent) approved or utilizes [application commands](/interactions/application-commands) |
+| 1 << 3  | TERMS_OF_SERVICE            | Application has terms of service set                                                                                                                                 |
+| 1 << 4  | PRIVACY_POLICY              | Application has a privacy policy set                                                                                                                                 |
+| 1 << 5  | SAFE_NAME                   | Application's name is safe for work                                                                                                                                  |
+| 1 << 6  | SAFE_DESCRIPTION            | Application's description is safe for work                                                                                                                           |
+| 1 << 7  | SAFE_ROLE_CONNECTIONS       | Application's role connections metadata is safe for work                                                                                                             |
+| 1 << 8  | USER_IS_TEAM_OWNER          | User is the owner of the team that owns the application                                                                                                              |
+| 1 << 9  | NOT_QUARANTINED             | Application is not quarantined                                                                                                                                       |
+| 1 << 10 | USER_LOCALE_SUPPORTED       | User's locale is supported by monetization                                                                                                                           |
+| 1 << 11 | USER_AGE_SUPPORTED          | User is old enough to use monetization                                                                                                                               |
+| 1 << 12 | USER_DATE_OF_BIRTH_DEFINED  | User has a date of birth defined on their account                                                                                                                    |
+| 1 << 13 | USER_MFA_ENABLED            | User has MFA enabled                                                                                                                                                 |
+| 1 << 14 | USER_EMAIL_VERIFIED         | User's email is verified                                                                                                                                             |
+| 1 << 15 | TEAM_MEMBERS_EMAIL_VERIFIED | All members of the team that owns the application have verified emails                                                                                               |
+| 1 << 16 | TEAM_MEMBERS_MFA_ENABLED    | All members of the team that owns the application have MFA enabled                                                                                                   |
+| 1 << 17 | NO_BLOCKING_ISSUES          | This application has no issues blocking monetization                                                                                                                 |
+| 1 << 18 | VALID_PAYOUT_STATUS         | Owning team has a valid payout status                                                                                                                                |
+
+###### Example Application
+
+```json
+{
+  "id": "891436243903728565",
+  "name": "Socket",
+  "icon": "26f3dcdc6e6371b52c384c812c30546c",
+  "description": "Socket",
+  "type": null,
+  "is_monetized": false,
+  "is_verified": false,
+  "is_discoverable": false,
+  "bot": {
+    "id": "891436243903728565",
+    "username": "Socket",
+    "avatar": "26f3dcdc6e6371b52c384c812c30546c",
+    "discriminator": "0001",
+    "public_flags": 0,
+    "bot": true,
+    "banner": null,
+    "accent_color": null,
+    "global_name": null,
+    "avatar_decoration_data": null,
+    "primary_guild": null
+  },
+  "deeplink_uri": "https://google.com/search?q=power+sockets+near+me",
+  "bot_public": true,
+  "bot_require_code_grant": false,
+  "verify_key": "852634a9ed80c0c5ac81e3c46d4b10a05400cb71898ea0484e7b63ac3a27096a",
+  "flags": 27828224,
+  "tags": ["60hz", "AC", "", "120v"],
+  "hook": true,
+  "storefront_available": false,
+  "redirect_uris": ["http://localhost:5000/callback"],
+  "interactions_endpoint_url": null,
+  "role_connections_verification_url": "https://google.com/search?q=power+sockets+near+me",
+  "owner": {
+    "id": "1110738998453837384",
+    "username": "team1110738998453837384",
+    "avatar": null,
+    "discriminator": "0000",
+    "public_flags": 1024,
+    "banner": null,
+    "accent_color": null,
+    "global_name": null,
+    "avatar_decoration_data": null,
+    "primary_guild": null
+  },
+  "approximate_guild_count": 100,
+  "approximate_user_install_count": 1000,
+  "interactions_event_types": [],
+  "interactions_version": 1,
+  "explicit_content_filter": 1,
+  "rpc_application_state": 0,
+  "store_application_state": 1,
+  "creator_monetization_state": 1,
+  "verification_state": 1,
+  "integration_public": true,
+  "integration_require_code_grant": false,
+  "discoverability_state": 1,
+  "discovery_eligibility_flags": 36294,
+  "monetization_state": 1,
+  "monetization_eligibility_flags": 0,
+  "publishers": [{ "id": "1058932127820939295", "name": "AlienTec" }],
+  "developers": [{ "id": "1058932084854509568", "name": "Alien Games" }],
+  "team": {
+    "id": "1110738998453837384",
+    "icon": null,
+    "name": "Power",
+    "owner_user_id": "852892297661906993",
+    "members": [
+      {
+        "user": {
+          "id": "852892297661906993",
+          "username": "dolfies",
+          "avatar": "c78ef8fb1db15a3d5f1b4c057856c5c9",
+          "discriminator": "0",
+          "public_flags": 136,
+          "banner": null,
+          "accent_color": null,
+          "global_name": "Dolfies",
+          "avatar_decoration_data": null,
+          "primary_guild": null
+        },
+        "team_id": "1110738998453837384",
+        "membership_state": 2,
+        "role": "admin"
+      }
+    ]
+  },
+  "internal_guild_restriction": 1
+}
+```
+
+###### Example Partial Application
+
+```json
+{
+  "id": "880218394199220334",
+  "name": "Watch Together",
+  "icon": "ec48acbad4c32efab4275cb9f3ca3a58",
+  "description": "Create and watch a playlist of YouTube videos with your friends. Your choice to share the remote or not. ",
+  "type": null,
+  "is_monetized": false,
+  "is_verified": false,
+  "is_discoverable": false,
+  "cover_image": "3cc9446876ae9eec6e06ff565703c292",
+  "bot": {
+    "id": "880218394199220334",
+    "username": "Watch Together",
+    "avatar": "fe2b7fa334817b0346d57416ad75e93b",
+    "discriminator": "5319",
+    "public_flags": 0,
+    "bot": true,
+    "banner": null,
+    "accent_color": null,
+    "global_name": null,
+    "avatar_decoration_data": null,
+    "primary_guild": null
+  },
+  "summary": "",
+  "bot_public": false,
+  "bot_require_code_grant": false,
+  "terms_of_service_url": "https://discord.com/terms",
+  "privacy_policy_url": "https://discord.com/privacy",
+  "verify_key": "e2aaf50fbe2fd9d025ac669035f5efb89099931690fba9dc28efb7eaade7f96d",
+  "flags": 1179648,
+  "max_participants": -1,
+  "tags": ["Video Player", "Watch"],
+  "hook": true,
+  "storefront_available": false,
+  "embedded_activity_config": {
+    "activity_preview_video_asset_id": "1104184163201990836",
+    "supported_platforms": ["web", "ios", "android"],
+    "default_orientation_lock_state": 2,
+    "tablet_default_orientation_lock_state": 1,
+    "requires_age_gate": false,
+    "legacy_responsive_aspect_ratio": false,
+    "premium_tier_requirement": null,
+    "free_period_starts_at": null,
+    "free_period_ends_at": null,
+    "client_platform_config": {
+      "ios": { "label_type": 0, "label_until": null, "release_phase": "global_launch" },
+      "android": { "label_type": 0, "label_until": null, "release_phase": "global_launch" },
+      "web": { "label_type": 0, "label_until": null, "release_phase": "global_launch" }
+    },
+    "shelf_rank": 3,
+    "has_csp_exception": false,
+    "displays_advertisements": false
+  }
+}
+```
+
+### Application Executable Object
+
+###### Application Executable Structure
+
+| Field       | Type    | Description                                                                                      |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------ |
+| os          | string  | The [operating system](/resources/presence#operating-system-type) the executable can be found on |
+| name        | string  | The name of the executable                                                                       |
+| is_launcher | boolean | Whether the executable is for a game launcher                                                    |
+
+###### Example Application Executable
+
+```json
+{
+  "os": "win32",
+  "name": "spaceship looter/spaceship_looter.exe",
+  "is_launcher": false
+}
+```
+
+### Application SKU Object
+
+###### Application SKU Structure
+
+| Field       | Type    | Description                                      |
+| ----------- | ------- | ------------------------------------------------ |
+| id          | ?string | The ID of the game                               |
+| sku         | ?string | The SKU of the game                              |
+| distributor | string  | The [distributor](#distributor-type) of the game |
+
+##### Distributor Type
+
+| Value          | Description         |
+| -------------- | ------------------- |
+| discord        | Discord Store       |
+| steam          | Steam               |
+| twitch         | Twitch              |
+| uplay          | Ubisoft Connect     |
+| battlenet      | Battle.net          |
+| origin         | Origin              |
+| gog            | GOG.com             |
+| epic           | Epic Games Store    |
+| google_play    | Google Play Store   |
+| nvidia_gdn_app | NVIDIA Cloud Gaming |
+
+###### Example Application SKU
+
+```json
+{
+  "id": "445220",
+  "sku": "445220",
+  "distributor": "steam"
+}
+```
+
+### Application Install Params Object
+
+###### Application Install Params Structure
+
+| Field       | Type          | Description                                                                                  |
+| ----------- | ------------- | -------------------------------------------------------------------------------------------- |
+| scopes      | array[string] | The [scopes](/topics/oauth2#oauth2-scopes) to authorize the integration with                 |
+| permissions | string        | The [permissions](/topics/permissions) to request for the application's bot integration role |
+
+###### Application Integration Type
+
+An application's supported installation contexts.
+
+| Value | Name          | Description                |
+| ----- | ------------- | -------------------------- |
+| 0     | GUILD_INSTALL | Guild installation context |
+| 1     | USER_INSTALL  | User installation context  |
+
+###### Application Integration Type Configuration Structure
+
+| Field                  | Type                                                                       | Description                                                        |
+| ---------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| oauth2_install_params? | [application install params](#application-install-params-structure) object | The default in-app authorization link for the installation context |
+
+###### Example Application Install Params
+
+```json
+{
+  "scopes": ["applications.commands", "bot"],
+  "permissions": "8"
+}
+```
+
+### Application Proxy Config Object
+
+The application proxy makes it possible to proxy requests to a domain through the Discord activity proxy.
+This is used by embedded activities to be able to make requests without being blocked by Discord's content security policy (CSP).
+
+Mapped URLs are available at `<application_id>.discordsays.com/.proxy/<prefix>`.
+
+###### Application Proxy Config Structure
+
+| Field   | Type                                                                            | Description                  |
+| ------- | ------------------------------------------------------------------------------- | ---------------------------- |
+| url_map | array[[application proxy mapping](#application-proxy-mapping-structure) object] | The URLs mapped to the proxy |
+
+###### Application Proxy Mapping Structure
+
+| Field  | Type   | Description             |
+| ------ | ------ | ----------------------- |
+| prefix | string | The prefix on the proxy |
+| target | string | The domain to proxy     |
+
+###### Example Application Proxy Config
+
+```json
+{
+  "url_map": [
+    {
+      "prefix": "/api",
+      "target": "api.example.com"
+    }
+  ]
+}
+```
+
+### Embedded Activity Config Object
+
+###### Embedded Activity Config Structure
+
+| Field                                     | Type                                                                                                  | Description                                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| application_id? ^1^                       | snowflake                                                                                             | The ID of the application this embedded activity is for                                                          |
+| activity_preview_video_asset_id           | ?snowflake                                                                                            | The ID of the application asset to preview the activity with                                                     |
+| supported_platforms                       | array[string]                                                                                         | The [platforms this activity is supported on](#embedded-activity-platform-type)                                  |
+| default_orientation_lock_state            | integer                                                                                               | The default [orientation lock state](#embedded-activity-orientation-lock-state-type) for the activity on mobile  |
+| tablet_default_orientation_lock_state     | integer                                                                                               | The default [orientation lock state](#embedded-activity-orientation-lock-state-type) for the activity on tablets |
+| requires_age_gate                         | boolean                                                                                               | Whether the activity is age gated                                                                                |
+| legacy_responsive_aspect_ratio            | boolean                                                                                               | Whether the activity uses a responsive aspect ratio instead of a dynamic aspect ratio                            |
+| premium_tier_requirement **(deprecated)** | ?integer                                                                                              | The minimum [guild premium tier](/resources/guild#premium-tier) required to use the activity, if any             |
+| free_period_starts_at **(deprecated)**    | ?ISO8601 timestamp                                                                                    | When the current free period for the activity starts, if any                                                     |
+| free_period_ends_at **(deprecated)**      | ?ISO8601 timestamp                                                                                    | When the current free period for the activity ends, if any                                                       |
+| client_platform_config                    | map[string, [embedded activity platform config](#embedded-activity-platform-config-structure) object] | The release configuration for the activity on each [platform](#embedded-activity-platform-type)                  |
+| shelf_rank                                | integer                                                                                               | The rank of the activity in the activity shelf sort order                                                        |
+| has_csp_exception                         | boolean                                                                                               | Whether the activity is not routed through the Discord activity proxy                                            |
+| displays_advertisements                   | boolean                                                                                               | Whether the activity displays advertisements                                                                     |
+
+^1^ Omitted in the [application object](#application-object).
+
+###### Embedded Activity Orientation Lock State Type
+
+| Value | Name      | Description              |
+| ----- | --------- | ------------------------ |
+| 1     | UNLOCKED  | Unrestricted orientation |
+| 2     | PORTRAIT  | Portrait only            |
+| 3     | LANDSCAPE | Landscape only           |
+
+##### Embedded Activity Platform Type
+
+| Value   | Description |
+| ------- | ----------- |
+| web     | Web         |
+| android | Android     |
+| ios     | iOS         |
+
+###### Embedded Activity Platform Config Structure
+
+| Field                    | Type               | Description                                                                 |
+| ------------------------ | ------------------ | --------------------------------------------------------------------------- |
+| label_type               | integer            | The [type of release label](#embedded-activity-label-type) for the platform |
+| label_until?             | ?ISO8601 timestamp | When the release label expires                                              |
+| release_phase            | string             | The [release phase](#embedded-activity-release-phase) for the platform      |
+| omit_badge_from_surfaces | array[string]      | The [surfaces](#embedded-activity-surface) to omit the activity badge from  |
+
+###### Embedded Activity Label Type
+
+| Value | Name    | Description                            |
+| ----- | ------- | -------------------------------------- |
+| 0     | NONE    | No special label                       |
+| 1     | NEW     | The activity is new                    |
+| 2     | UPDATED | The activity has been recently updated |
+
+###### Embedded Activity Release Phase
+
+| Value                 | Description                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| in_development        | The activity is still in development                                                                                |
+| activities_team       | The activity is available to guilds with the [`ACTIVITIES_ALPHA` guild feature](/resources/guild#guild-features)    |
+| employee_release      | The activity is available to guilds with the [`ACTIVITIES_EMPLOYEE` guild feature](/resources/guild#guild-features) |
+| soft_launch           | The activity is available to all guilds                                                                             |
+| soft_launch_multi_geo | The activity is available to all guilds                                                                             |
+| global_launch         | The activity is available to all guilds                                                                             |
+
+###### Embedded Activity Surface
+
+| Value          | Description                                          |
+| -------------- | ---------------------------------------------------- |
+| voice_launcher | The activity launcher in the voice channel interface |
+| text_launcher  | The activity launcher in the text channel interface  |
+
+###### Example Embedded Activity Config
+
+```json
+{
+  "activity_preview_video_asset_id": "1104184163201990836",
+  "supported_platforms": ["web", "ios", "android"],
+  "default_orientation_lock_state": 2,
+  "tablet_default_orientation_lock_state": 1,
+  "requires_age_gate": false,
+  "legacy_responsive_aspect_ratio": false,
+  "premium_tier_requirement": null,
+  "free_period_starts_at": null,
+  "free_period_ends_at": null,
+  "client_platform_config": {
+    "android": {
+      "label_type": 0,
+      "label_until": null,
+      "release_phase": "global_launch",
+      "omit_badge_from_surfaces": []
+    },
+    "ios": {
+      "label_type": 0,
+      "label_until": null,
+      "release_phase": "global_launch",
+      "omit_badge_from_surfaces": []
+    },
+    "web": {
+      "label_type": 0,
+      "label_until": null,
+      "release_phase": "global_launch",
+      "omit_badge_from_surfaces": []
+    }
+  },
+  "shelf_rank": 3,
+  "has_csp_exception": false,
+  "displays_advertisements": false,
+  "application_id": "880218394199220334"
+}
+```
+
+### Application Asset Object
+
+###### Application Asset Structure
+
+| Field | Type    | Description                                      |
+| ----- | ------- | ------------------------------------------------ |
+| id    | string  | The ID of the asset                              |
+| type  | integer | The [type of the asset](#application-asset-type) |
+| name  | string  | The name of the asset                            |
+
+###### Application Asset Type
+
+| Value | Name | Description |
+| ----- | ---- | ----------- |
+| 1     | ONE  | Unknown     |
+| 2     | TWO  | Unknown     |
+
+###### Example Application Asset
+
+```json
+{
+  "id": "1131721726514954381",
+  "type": 1,
+  "name": "alien"
+}
+```
+
+### Application Role Connection Object
+
+The role connection object that an application has attached to a user.
+
+###### Application Role Connection Structure
+
+| Field                 | Type                                                                                               | Description                                                                                                                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| platform_name         | ?string                                                                                            | The vanity name of the platform a bot has connected (max 50 characters)                                                                                                                                      |
+| platform_username     | ?string                                                                                            | The username on the platform a bot has connected (max 100 characters)                                                                                                                                        |
+| metadata              | object                                                                                             | Object mapping [application role connection metadata](#application-role-connection-metadata-object) keys to their `string`-ified value (max 100 characters) for the user on the platform a bot has connected |
+| application?          | [integration application](/resources/integration#integration-application-object) object            | The application that owns the role connection                                                                                                                                                                |
+| application_metadata? | array[[application role connection metadata](#application-role-connection-metadata-object) object] | The metadata that the application has set for the role connection                                                                                                                                            |
+
+### Application Role Connection Metadata Object
+
+A representation of role connection metadata for an [application](#application-object).
+
+When a guild has added an application integration and that integration has configured its [`role_connections_verification_url`](#application-object), the application will render as a potential verification method in the guild's role verification configuration.
+
+If an application has configured role connection metadata, its metadata will appear in the role verification configuration when the application has been added as a verification method to the role.
+
+When a user connects their account using the integration's [`role_connections_verification_url`](#application-object), the integration will [update a user's role connection with metadata](#modify-user-application-role-connection) using the OAuth2 `role_connections.write` scope.
+
+###### Application Role Connection Metadata Structure
+
+| Field                      | Type          | Description                                                                          |
+| -------------------------- | ------------- | ------------------------------------------------------------------------------------ |
+| type                       | integer       | The [type of metadata value](/resources/guild#role-connection-operator-type)         |
+| key                        | string        | Key for the metadata field (1-50 characters, must be `a-z`, `0-9`, or `_`)           |
+| name                       | string        | The name of the metadata field (1-100 characters)                                    |
+| name_localizations?        | map[str, str] | Translations of the name with keys in [available locales](/reference#locales)        |
+| description                | string        | The description of the metadata field (1-200 characters)                             |
+| description_localizations? | map[str, str] | Translations of the description with keys in [available locales](/reference#locales) |
+
+<Alert type="info">
+
+Each metadata type offers a comparison operation that allows guilds to configure role requirements based on metadata values stored by the bot. Bots specify a `metadata value` for each user and guilds specify the required `guild's configured value` within the guild role settings.
+
+</Alert>
+
+### Activity Link Object
+
+###### Activity Link Structure
+
+| Field                         | Type      | Description                                      |
+| ----------------------------- | --------- | ------------------------------------------------ |
+| application_id                | snowflake | The application ID                               |
+| link_id ^1^                   | string    | The link ID                                      |
+| asset_path? ^2^               | string    | The hash of the application quick link asset     |
+| asset_id? ^2^                 | snowflake | The ID of the application asset                  |
+| title                         | string    | The title of the activity link                   |
+| description                   | string    | The description of the activity link             |
+| custom_id?                    | ?string   | A custom ID for the activity link                |
+| primary_cta? **(deprecated)** | ?string   | The primary call to action for the activity link |
+
+^1^ The link ID is in the format `<type>-<id>` where `type` is the [activity link type](#activity-link-type) and `id` is the snowflake ID.
+
+^2^ `asset_path` is only present on quick links, while `asset_id` is only present on managed links.
+
+###### Activity Link Type
+
+| Value | Name         | Description                                      |
+| ----- | ------------ | ------------------------------------------------ |
+| 0     | MANAGED_LINK | Managed by the application and last indefinitely |
+| 1     | QUICK_LINK   | Made by the user and last for 30 days            |
+
+###### Example Activity Link
+
+```json
+{
+  "application_id": "891436233903964161",
+  "link_id": "1-1385320255148003439",
+  "asset_path": "74420086a1aee57564cd6fc9a28461b1",
+  "title": "Alien",
+  "description": "aliens",
+  "primary_cta": null,
+  "custom_id": "button"
+}
+```
+
+## Endpoints
+
+<RouteHeader method="GET" url="/applications">
+  Get Applications
+</RouteHeader>
+
+Returns a list of [application](#application-object) objects that the current user has.
+
+###### Query String Params
+
+| Field                   | Type    | Description                                                                               |
+| ----------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| with_team_applications? | boolean | Whether to include applications that a [team](/resources/team) the user is a part of owns |
+
+<RouteHeader method="GET" url="/applications-with-assets">
+  Get Applications with Assets
+</RouteHeader>
+
+Returns a list of [application](#application-object) objects that the current user has, additionally including the application's assets.
+
+###### Query String Params
+
+| Field                   | Type    | Description                                                                               |
+| ----------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| with_team_applications? | boolean | Whether to include applications that a [team](/resources/team) the user is a part of owns |
+
+###### Response Body
+
+| Field        | Type                                                                         | Description                     |
+| ------------ | ---------------------------------------------------------------------------- | ------------------------------- |
+| applications | array[[application](#application-object)]                                    | The applications the user has   |
+| assets       | map[snowflake, array[[application asset](#application-asset-object) object]] | The assets for each application |
+
+###### Example Response
+
+```json
+{
+  "applications": [
+    {
+      "id": "891436243903728565",
+      "name": "Lightbulb",
+      "icon": "546242649e3b09a97af7e8f29983837b",
+      "description": "💡 Let there be light",
+      "summary": "",
+      "type": null,
+      "is_monetized": false,
+      "is_verified": false,
+      "is_discoverable": false,
+      "cover_image": "75bc61df60fc74c46b32fde3532f662b",
+      "deeplink_uri": "https://google.com/search?q=lightbulbs+near+me",
+      "hook": true,
+      "guild_id": "1029315212005888060",
+      "storefront_available": false,
+      "bot_public": true,
+      "bot_require_code_grant": false,
+      "terms_of_service_url": "https://google.com/search?q=lightbulbs+near+me",
+      "privacy_policy_url": "https://google.com/search?q=lightbulbs+near+me",
+      "integration_types_config": {
+        "0": {},
+        "1": {}
+      },
+      "verify_key": "852634a9ed80c0c5ac81e3c46d4b10a05400cb71898ea0484e7b63ac3a27096a",
+      "owner": {
+        "id": "1110738998453837384",
+        "username": "team1110738998453837384",
+        "global_name": null,
+        "avatar": null,
+        "avatar_decoration_data": null,
+        "discriminator": "0000",
+        "public_flags": 1024,
+        "primary_guild": null,
+        "flags": 1024
+      },
+      "flags": 27959296,
+      "redirect_uris": ["http://localhost:5000/callback"],
+      "rpc_application_state": 0,
+      "store_application_state": 1,
+      "verification_state": 1,
+      "interactions_endpoint_url": null,
+      "interactions_event_types": [],
+      "interactions_version": 1,
+      "integration_public": true,
+      "integration_require_code_grant": false,
+      "explicit_content_filter": 1,
+      "discoverability_state": 1,
+      "discovery_eligibility_flags": 36830,
+      "monetization_state": 1,
+      "role_connections_verification_url": "https://google.com/search?q=lightbulbs+near+me",
+      "internal_guild_restriction": 1,
+      "bot": {
+        "id": "891436243903728565",
+        "username": "Lightbulb",
+        "global_name": null,
+        "avatar": "546242649e3b09a97af7e8f29983837b",
+        "avatar_decoration_data": null,
+        "discriminator": "5312",
+        "public_flags": 0,
+        "primary_guild": null,
+        "bot": true
+      },
+      "approximate_guild_count": 100,
+      "approximate_user_install_count": 1000,
+      "max_participants": -1,
+      "embedded_activity_config": {
+        "activity_preview_video_asset_id": "1131721726514954381",
+        "supported_platforms": ["web", "android", "ios"],
+        "default_orientation_lock_state": 1,
+        "tablet_default_orientation_lock_state": 1,
+        "requires_age_gate": false,
+        "legacy_responsive_aspect_ratio": false,
+        "premium_tier_requirement": null,
+        "free_period_starts_at": null,
+        "free_period_ends_at": null,
+        "client_platform_config": {
+          "web": {
+            "label_type": 0,
+            "label_until": null,
+            "release_phase": "in_development"
+          },
+          "android": {
+            "label_type": 0,
+            "label_until": null,
+            "release_phase": "in_development"
+          },
+          "ios": {
+            "label_type": 0,
+            "label_until": null,
+            "release_phase": "in_development"
+          }
+        },
+        "shelf_rank": 2147483647,
+        "has_csp_exception": false,
+        "displays_advertisements": false
+      },
+      "tags": ["", "100W", "EnergyStar", "LED"]
+    }
+  ],
+  "assets": {
+    "891436243903728565": [
+      {
+        "id": "1223782285833273507",
+        "type": 1,
+        "name": "embedded_background"
+      },
+      {
+        "id": "1223782287091564634",
+        "type": 1,
+        "name": "embedded_cover"
+      }
+    ]
+  }
+}
+```
+
+<RouteHeader method="POST" url="/applications">
+  Create Application
+</RouteHeader>
+
+Creates a new application. Returns an [application](#application-object) object on success. Users can have a maximum of 50 applications, with each team able to have a maximum of 25.
+
+###### JSON Params
+
+| Field          | Type                               | Description                                                                                                                                                        |
+| -------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name           | string                             | The name of the application                                                                                                                                        |
+| type?          | integer                            | The [type of the application](#application-type) (only `CREATOR_MONETIZATION` is supported)                                                                        |
+| team_id?       | snowflake                          | The ID of the [team](/resources/team) to create this application under                                                                                             |
+| description?   | ?string                            | The description of the application                                                                                                                                 |
+| icon?          | ?[image data](/reference#cdn-data) | The application's icon                                                                                                                                             |
+| cover_image?   | ?[image data](/reference#cdn-data) | The application's default rich presence invite cover image                                                                                                         |
+| flags?         | integer                            | the [application's flags](#application-flags) (only `GATEWAY_GUILD_MEMBERS_LIMITED`, `GATEWAY_PRESENCE_LIMITED`, and `GATEWAY_MESSAGE_CONTENT_LIMITED` can be set) |
+| guild_id?      | ?snowflake                         | The ID of the guild linked to the application                                                                                                                      |
+| redirect_uris? | ?array[string]                     | The whitelisted URLs for redirecting to during [OAuth2 authorization](/topics/oauth2) (max 10)                                                                     |
+| deeplink_uri?  | ?string                            | The URL used for deep linking during [OAuth2 authorization](/topics/oauth2) on mobile devices                                                                      |
+
+<RouteHeader method="GET" url="/applications/{application.id}">
+  Get Application
+</RouteHeader>
+
+Returns an [application](#application-object) object for the given ID. User must be the owner of the application or member of the current team.
+
+<RouteHeader method="GET" url="/applications/@me">
+  Get Current Application
+</RouteHeader>
+
+Returns the [application](#application-object) object associated with the requestor.
+
+<Alert type="warn">
+
+This endpoint is not usable by user accounts.
+
+</Alert>
+
+<RouteHeader method="PATCH" url="/applications/{application.id}">
+  Modify Application
+</RouteHeader>
+
+Modifies an application. User must be the owner of the application or developer of the current team. Returns the updated [application](#application-object) object on success.
+
+###### JSON Params
+
+| Field                                    | Type                                                                                                                      | Description                                                                                                                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name?                                    | string                                                                                                                    | The name of the application                                                                                                                                                                |
+| description?                             | ?string                                                                                                                   | The description of the application                                                                                                                                                         |
+| icon?                                    | ?[image data](/reference#cdn-data)                                                                                        | The application's icon                                                                                                                                                                     |
+| cover_image?                             | ?[image data](/reference#cdn-data)                                                                                        | The application's default rich presence invite cover image                                                                                                                                 |
+| flags?                                   | integer                                                                                                                   | The [application's flags](#application-flags) (only `PUBLIC_OAUTH2_CLIENT`, `GATEWAY_GUILD_MEMBERS_LIMITED`, `GATEWAY_PRESENCE_LIMITED`, and `GATEWAY_MESSAGE_CONTENT_LIMITED` can be set) |
+| guild_id?                                | ?snowflake                                                                                                                | The ID of the guild linked to the application                                                                                                                                              |
+| developer_ids?                           | ?array[snowflake]                                                                                                         | The IDs of the companies that developed the application                                                                                                                                    |
+| publisher_ids?                           | ?array[snowflake]                                                                                                         | The IDs of the companies that published the application                                                                                                                                    |
+| rpc_origins?                             | ?array[string]                                                                                                            | The whitelisted RPC origin URLs for the application, if RPC is enabled                                                                                                                     |
+| redirect_uris?                           | ?array[string]                                                                                                            | The whitelisted URLs for redirecting to during [OAuth2 authorization](/topics/oauth2) (max 10)                                                                                             |
+| deeplink_uri?                            | ?string                                                                                                                   | The URL used for deep linking during [OAuth2 authorization](/topics/oauth2) on mobile devices                                                                                              |
+| integration_public?                      | boolean                                                                                                                   | Whether only the application owner can add the integration                                                                                                                                 |
+| integration_require_code_grant?          | boolean                                                                                                                   | Whether the integration will only be added upon completion of a full OAuth2 token exchange                                                                                                 |
+| bot_public? **(deprecated)**             | boolean                                                                                                                   | Whether only the application owner can add the bot                                                                                                                                         |
+| bot_require_code_grant? **(deprecated)** | boolean                                                                                                                   | Whether the application's bot will only be added upon completion of a full OAuth2 token exchange                                                                                           |
+| terms_of_service_url?                    | ?string                                                                                                                   | The URL to the application's terms of service                                                                                                                                              |
+| privacy_policy_url?                      | ?string                                                                                                                   | The URL to the application's privacy policy                                                                                                                                                |
+| role_connections_verification_url        | ?string                                                                                                                   | The role connection verification entry point of the integration; when configured, this will render the application as a verification method in guild role verification configuration       |
+| interactions_endpoint_url?               | string                                                                                                                    | The URL of the application's [interactions endpoint](/interactions/receiving-and-responding#receiving-an-interaction)                                                                      |
+| interactions_version?                    | integer                                                                                                                   | The [version of the application's interactions endpoint implementation](#application-interactions-version)                                                                                 |
+| interactions_event_types? ^1^            | ?array[string]                                                                                                            | The enabled [Gateway events](/topics/gateway-events) to send to the interaction endpoint                                                                                                   |
+| explicit_content_filter?                 | integer                                                                                                                   | [Whether uploaded media content](#explicit-content-filter-level) used in application commands is scanned and deleted for explicit content                                                  |
+| tags?                                    | ?array[string]                                                                                                            | Tags describing the content and functionality of the application (max 20 characters, max 5)                                                                                                |
+| install_params?                          | ?[application install params](#application-install-params-object) object                                                  | The default in-app authorization link for the integration                                                                                                                                  |
+| custom_install_url?                      | ?string                                                                                                                   | The default custom authorization link for the integration                                                                                                                                  |
+| integration_types_config?                | map[integer, ?[application integration type configuration](#application-integration-type-configuration-structure) object] | The configuration for each [integration type](#application-integration-type) supported by the application                                                                                  |
+| discoverability_state?                   | integer                                                                                                                   | The current [application directory discoverability state](#application-discoverability-state) of the application (only `NOT_DISCOVERABLE` and `DISCOVERABLE` is supported)                 |
+| monetization_state?                      | integer                                                                                                                   | The current [application monetization state](#application-monetization-state) of the application (only `NONE` and `ENABLED` is supported)                                                  |
+| max_participants?                        | ?integer                                                                                                                  | The maximum possible participants in the application's embedded activity (-1 for no limit)                                                                                                 |
+
+^1^ The sending of Gateway events over the interactions endpoint requires [interactions version 2](#application-interactions-version).
+
+<RouteHeader method="PATCH" url="/applications/@me">
+  Modify Current Application
+</RouteHeader>
+
+Modifies the requestor's application information. Returns the updated [application](#application-object) object on success.
+
+<Alert type="warn">
+
+This endpoint is not usable by user accounts.
+
+</Alert>
+
+###### JSON Params
+
+| Field                              | Type                                                                                                                      | Description                                                                                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| description?                       | ?string                                                                                                                   | The description of the application                                                                                                                                                   |
+| icon?                              | ?[image data](/reference#cdn-data)                                                                                        | The application's icon                                                                                                                                                               |
+| cover_image?                       | ?[image data](/reference#cdn-data)                                                                                        | The application's default rich presence invite cover image                                                                                                                           |
+| flags?                             | integer                                                                                                                   | The [application's flags](#application-flags) (only `GATEWAY_GUILD_MEMBERS_LIMITED`, `GATEWAY_PRESENCE_LIMITED`, and `GATEWAY_MESSAGE_CONTENT_LIMITED` can be set)                   |
+| rpc_origins?                       | ?array[string]                                                                                                            | The whitelisted RPC origin URLs for the application, if RPC is enabled                                                                                                               |
+| deeplink_uri?                      | ?string                                                                                                                   | The URL used for deep linking during [OAuth2 authorization](/topics/oauth2) on mobile devices                                                                                        |
+| role_connections_verification_url? | ?string                                                                                                                   | The role connection verification entry point of the integration; when configured, this will render the application as a verification method in guild role verification configuration |
+| interactions_endpoint_url?         | ?string                                                                                                                   | The URL of the application's [interactions endpoint](/interactions/receiving-and-responding#receiving-an-interaction)                                                                |
+| interactions_version?              | integer                                                                                                                   | The [version of the application's interactions endpoint implementation](#application-interactions-version)                                                                           |
+| interactions_event_types? ^1^      | ?array[string]                                                                                                            | The enabled [Gateway events](/topics/gateway-events) to send to the interaction endpoint                                                                                             |
+| explicit_content_filter?           | integer                                                                                                                   | [Whether uploaded media content](#explicit-content-filter-level) used in application commands is scanned and deleted for explicit content                                            |
+| tags?                              | ?array[string]                                                                                                            | Tags describing the content and functionality of the application (max 20 characters, max 5)                                                                                          |
+| install_params?                    | ?[application install params](#application-install-params-object) object                                                  | The default in-app authorization link for the integration                                                                                                                            |
+| custom_install_url?                | ?string                                                                                                                   | The default custom authorization link for the integration                                                                                                                            |
+| integration_types_config?          | map[integer, ?[application integration type configuration](#application-integration-type-configuration-structure) object] | The configuration for each [integration type](#application-integration-type) supported by the application                                                                            |
+| max_participants?                  | ?integer                                                                                                                  | The maximum possible participants in the application's embedded activity (-1 for no limit)                                                                                           |
+
+<RouteHeader method="POST" url="/applications/{application.id}/delete" mfa>
+  Delete Application
+</RouteHeader>
+
+Deletes an application permanently. User must be the owner of the application or current team. Returns a 204 empty response on success.
+
+<RouteHeader method="POST" url="/applications/{application.id}/transfer" mfa>
+  Transfer Application
+</RouteHeader>
+
+Transfers ownership of an application to a [team](/resources/team). User must be the owner of the application or current team. Returns an [application](#application-object) object on success.
+
+###### JSON Params
+
+| Field   | Type      | Description                                 |
+| ------- | --------- | ------------------------------------------- |
+| team_id | snowflake | The ID of the team to transfer ownership to |
+
+<RouteHeader method="POST" url="/applications/{application.id}/reset" mfa>
+  Reset Application Secret
+</RouteHeader>
+
+Resets the application's client secret. This revokes all previous secrets and returns a new secret. User must be the owner of the application or developer of the current team.
+
+###### Response Body
+
+| Field  | Type   | Description                              |
+| ------ | ------ | ---------------------------------------- |
+| secret | string | The client secret key of the application |
+
+###### Example Response
+
+```json
+{
+  "secret": "937it3ow87i4ery69876wqire"
+}
+```
+
+<RouteHeader method="GET" url="/oauth2/applications/{application.id}/allowlist">
+  Get Application Testers
+</RouteHeader>
+
+Returns a list of [whitelisted user](#whitelisted-user-structure) objects representing the invited testers for the given application ID. User must be the owner of the application or member of the current team.
+
+###### Whitelisted User Structure
+
+| Field | Type                                               | Description                                                        |
+| ----- | -------------------------------------------------- | ------------------------------------------------------------------ |
+| user  | partial [user](/resources/user#user-object) object | The user that is whitelisted for the application                   |
+| state | integer                                            | The [state of the whitelisted user](#application-membership-state) |
+
+###### Application Membership State
+
+| Value | Name     | Description                                                                |
+| ----- | -------- | -------------------------------------------------------------------------- |
+| 1     | INVITED  | The user has been invited to the application but has not yet accepted      |
+| 2     | ACCEPTED | The user has accepted the invitation to the application and is whitelisted |
+
+<RouteHeader method="POST" url="/oauth2/applications/{application.id}/allowlist">
+  Add Application Tester
+</RouteHeader>
+
+Adds a user to the application's list of testers. User must be the owner of the application or developer of the current team. Returns a [whitelisted user](#whitelisted-user-structure) object on success.
+
+<Alert type="warn">
+
+You must be friends with the user you are inviting.
+
+</Alert>
+
+<Alert type="warn">
+
+Applications may have a maximum of 50 whitelisted users.
+
+</Alert>
+
+###### JSON Params
+
+| Field              | Type    | Description                          |
+| ------------------ | ------- | ------------------------------------ |
+| username           | string  | The username of the user to add      |
+| discriminator? ^1^ | ?string | The discriminator of the user to add |
+
+^1^ Not applicable for migrated users. See the [section on Discord's new username system](/resources/user#unique-usernames) for more information.
+
+<RouteHeader method="POST" url="/oauth2/allowlist/accept">
+  Accept Application Tester Invitation
+</RouteHeader>
+
+Accepts an application tester invitation received via email. Invited users will receive an email with a link that redirects to the official Discord client with a verification token present in the URL's query (e.g. `https://discord.com/oauth2/allowlist/accept?token=h9sYyrafnMhhObX4nGi9VOugCa9CSt`). Returns a 204 empty response on success.
+
+###### Query String Params
+
+| Field | Type   | Description                         |
+| ----- | ------ | ----------------------------------- |
+| token | string | The verification token from the URL |
+
+<RouteHeader method="DELETE" url="/oauth2/applications/{application.id}/allowlist/{user.id}">
+  Remove Application Tester
+</RouteHeader>
+
+Removes a user from the application's list of testers. User must be the owner of the application or developer of the current team. Returns a 204 empty response on success.
+
+<RouteHeader method="POST" url="/applications/{application.id}/bot" mfa deprecated>
+  Create Application Bot
+</RouteHeader>
+
+Creates and attaches a bot to the given application ID. User must be the owner of the application or developer of the current team.
+
+<Alert type="info">
+
+All newly-created applications have a bot attached by default, so this endpoint is only useful for older applications.
+
+</Alert>
+
+###### Response Body
+
+| Field | Type    | Description                                      |
+| ----- | ------- | ------------------------------------------------ |
+| token | ?string | The token of the bot, if a bot was newly created |
+
+###### Example Response
+
+```json
+{
+  "token": "NzIyNDUwMzAzOTE5NTg3NDA5.GRj2Bt.cPbrvvjxglZXK4dTcIPDMvfq0LxJcilsIYW01A"
+}
+```
+
+<RouteHeader method="PATCH" url="/applications/{application.id}/bot">
+  Modify Application Bot
+</RouteHeader>
+
+Modifies the application's bot. User must be the owner of the application or developer of the current team. Returns the updated [user](/resources/user#user-object) object on success.
+
+###### JSON Params
+
+| Field     | Type                               | Description                           |
+| --------- | ---------------------------------- | ------------------------------------- |
+| username? | string                             | The user's username (2-32 characters) |
+| avatar?   | ?[image data](/reference#cdn-data) | The user's avatar                     |
+| banner?   | ?[image data](/reference#cdn-data) | The user's banner                     |
+
+<RouteHeader method="POST" url="/applications/{application.id}/bot/reset" mfa>
+  Reset Application Bot Token
+</RouteHeader>
+
+Resets the application's bot token. This revokes all previous tokens and returns a new token. User must be the owner of the application or developer of the current team.
+
+###### Response Body
+
+| Field | Type   | Description          |
+| ----- | ------ | -------------------- |
+| token | string | The token of the bot |
+
+<RouteHeader method="POST" url="/applications/{application.id}/request-additional-intents">
+  Request Application Gateway Intents
+</RouteHeader>
+
+Submits a request for Gateway intents for a verified bot. User must be the owner of the application or developer of the current team. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field                                                                           | Type     | Description                                                                                                                                                                            |
+| ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| application_description                                                         | string   | The description of the application (50-2000 characters)                                                                                                                                |
+| intents_flags_requested?                                                        | integer  | The [application flags](#application-flags) representing the requested Gateway intents (only `GATEWAY_PRESENCE`, `GATEWAY_GUILD_MEMBERS`, and `GATEWAY_MESSAGE_CONTENT` are supported) |
+| intents_gateway_presence_use_case_description? ^1^                              | ?string  | The use case for requesting the presence intent (50-2000 characters)                                                                                                                   |
+| intents_gateway_presence_use_case_supplemental_material_description? ^1^        | ?string  | The supplemental material for the requested Gateway presence intent (5-2000 characters)                                                                                                |
+| intents_gateway_presence_store_off_platform? ^1^                                | ?boolean | Whether the application stores presence data off-platform                                                                                                                              |
+| intents_gateway_presence_retention?                                             | ?boolean | Whether the application retains presence data for 30 days or less                                                                                                                      |
+| intents_gateway_presence_encrypted?                                             | ?boolean | Whether the application encrypts stored presence data at rest                                                                                                                          |
+| intents_gateway_presence_opt_out_stored?                                        | ?boolean | Whether application users can opt out of having their presence data stored                                                                                                             |
+| intents_gateway_presence_contact_deletion? ^1^                                  | ?string  | How application users can request the deletion of their presence data (25-2000 characters)                                                                                             |
+| intents_gateway_guild_members_use_case_description? ^1^                         | ?string  | The use case for requesting the guild members intent (50-2000 characters)                                                                                                              |
+| intents_gateway_guild_members_use_case_supplemental_material_description? ^1^   | ?string  | The supplemental material for the requested Gateway guild members intent (5-2000 characters)                                                                                           |
+| intents_gateway_guild_members_store_off_platform? ^1^                           | ?boolean | Whether the application stores guild member data off-platform                                                                                                                          |
+| intents_gateway_guild_members_retention?                                        | ?boolean | Whether the application retains guild member datafor 30 days or less                                                                                                                   |
+| intents_gateway_guild_members_encrypted?                                        | ?boolean | Whether the application encrypts stored guild member data at rest                                                                                                                      |
+| intents_gateway_guild_members_contact_deletion?                                 | ?string  | How application users can request the deletion of their guild member data (25-2000 characters)                                                                                         |
+| intents_gateway_message_content_use_case_description? ^1^                       | ?string  | The use case for requesting the message content intent (50-2000 characters)                                                                                                            |
+| intents_gateway_message_content_use_case_supplemental_material_description? ^1^ | ?string  | The supplemental material for the requested Gateway message content intent (5-2000 characters)                                                                                         |
+| intents_gateway_message_content_store_off_platform? ^1^                         | ?boolean | Whether the application stores message content data off-platform                                                                                                                       |
+| intents_gateway_message_content_retention?                                      | ?boolean | Whether the application retains message content data for 30 days or less                                                                                                               |
+| intents_gateway_message_content_encrypted?                                      | ?boolean | Whether the application encrypts stored message content data at rest                                                                                                                   |
+| intents_gateway_message_content_opt_out_stored?                                 | ?boolean | Whether application users can opt out of having their message content data stored                                                                                                      |
+| intents_gateway_message_content_ai_training?                                    | ?boolean | Whether the application uses message content data for AI training                                                                                                                      |
+| intents_gateway_message_content_privacy_policy_public?                          | ?boolean | Whether the application has a public privacy policy detailing how message content data is used                                                                                         |
+| intents_gateway_message_content_privacy_policy_location?                        | ?string  | Where the application's privacy policy can be found (25-2000 characters)                                                                                                               |
+| intents_gateway_message_content_privacy_policy_example?                         | ?string  | A link to or screenshots of the application's privacy policy (25-2000 characters)                                                                                                      |
+| intents_gateway_message_content_contact_deletion?                               | ?string  | How application users can request the deletion of their message content data (25-2000 characters)                                                                                      |
+
+^1^ Required if the corresponding intent is requested.
+
+<RouteHeader method="GET" url="/applications/{application.id}/discoverability-state">
+  Get Application Discoverability State
+</RouteHeader>
+
+Returns information about the application's eligibility for application directory. User must be the owner of the application or member of the current team.
+
+###### Response Body
+
+| Field                       | Type                                                                                               | Description                                                                                                         |
+| --------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| discoverability_state       | integer                                                                                            | The current application directory [discoverability state](#application-discoverability-state) of the application    |
+| discovery_eligibility_flags | integer                                                                                            | The current application directory [eligibility flags](#application-discovery-eligibility-flags) for the application |
+| bad_commands                | array[[application command](/interactions/application-commands#application-command-object) object] | Not safe for work commands that are not allowed in the application directory                                        |
+
+<RouteHeader method="GET" url="/activities/{application.id}/test-mode">
+  Query Application Test Mode
+</RouteHeader>
+
+Queries whether the user can use test mode for the application. Test mode allows completing purchases without payment. User must be the owner of the application or developer of the current team. Returns a 204 empty response on success.
+
+<RouteHeader method="GET" url="/activities/shelf">
+  Get Embedded Activities
+</RouteHeader>
+
+Returns the embedded activities available globally or in a particular guild.
+
+###### Query String Params
+
+| Field     | Type      | Description                              |
+| --------- | --------- | ---------------------------------------- |
+| guild_id? | snowflake | The ID to return embedded activities for |
+
+###### Response Body
+
+| Field        | Type                                                                       | Description                                                 |
+| ------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| activities   | array[[embedded activity config](#embedded-activity-config-object) object] | The available embedded activities                           |
+| applications | array[partial [application](#application-object) object]                   | Applications representing the available embedded activities |
+| assets       | map[snowflake, array[[application asset](#application-asset-object)]]      | The assets for each application                             |
+
+<RouteHeader method="POST" url="/applications/{application.id}/set-embedded">
+  Set Application Embeddability
+</RouteHeader>
+
+Modifies whether the application is an embedded activity or not (determined by the [`EMBEDDED` flag](#application-flags)). User must be the owner of the application or developer of the current team. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field    | Type    | Description                         |
+| -------- | ------- | ----------------------------------- |
+| embedded | boolean | Whether the application is embedded |
+
+<RouteHeader method="GET" url="/applications/{application.id}/embedded-activity-config">
+  Get Application Embedded Activity Config
+</RouteHeader>
+
+Returns the [embedded activity config](#embedded-activity-config-object) object for the given application ID. User must be the owner of the application or member of the current team.
+
+<RouteHeader method="PATCH" url="/applications/{application.id}/embedded-activity-config">
+  Modify Application Embedded Activity Config
+</RouteHeader>
+
+Modifies the embedded activity config for the given application ID. User must be the owner of the application or developer of the current team. Returns the updated [embedded activity config](#embedded-activity-config-object) object on success.
+
+###### JSON Params
+
+| Field                                   | Type                                                                                                  | Description                                                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| activity_preview_video_asset_id?        | ?snowflake                                                                                            | The ID of the application asset to preview the activity with                                                     |
+| supported_platforms?                    | ?array[string]                                                                                        | The [platforms this activity is supported on](#embedded-activity-platform-type)                                  |
+| default_orientation_lock_state?         | integer                                                                                               | The default [orientation lock state](#embedded-activity-orientation-lock-state-type) for the activity on mobile  |
+| tablet_default_orientation_lock_state?  | integer                                                                                               | The default [orientation lock state](#embedded-activity-orientation-lock-state-type) for the activity on tablets |
+| requires_age_gate?                      | boolean                                                                                               | Whether the activity is age gated                                                                                |
+| free_period_starts_at? **(deprecated)** | ?ISO8601 timestamp                                                                                    | When the current free period for the activity starts, if any                                                     |
+| free_period_ends_at? **(deprecated)**   | ?ISO8601 timestamp                                                                                    | When the current free period for the activity ends, if any                                                       |
+| client_platform_config?                 | map[string, [embedded activity platform config](#embedded-activity-platform-config-structure) object] | The release configuration for the activity on each [platform](#embedded-activity-platform-type)                  |
+| shelf_rank?                             | integer                                                                                               | The rank of the activity in the activity shelf sort order                                                        |
+
+<RouteHeader method="GET" url="/applications/{application.id}/proxy-config">
+  Get Application Proxy Config
+</RouteHeader>
+
+Returns the application's [activity proxy config](#application-proxy-config-object) object for the given application ID. User must be the owner of the application or member of the current team.
+
+<RouteHeader method="POST" url="/applications/{application.id}/proxy-config">
+  Modify Application Proxy Config
+</RouteHeader>
+
+Replaces the activity proxy config for the given application ID. User must be the owner of the application or developer of the current team. Returns the updated [application proxy config](#application-proxy-config-object) object on success.
+
+Notes:
+
+- URL mappings can utilize any protocol, so the protocol should be omitted from the `target` field.
+- Parameter matching is supported in both the `prefix` and `target` fields. For example, you can map `/server/{id}` to `server-{id}.example.com`.
+- Because of how URL globbing works, the order of the mappings is important. The most specific mappings should be at the top of the list as the first match is used. For example, if you have `/foo` and `/foo/bar`, you must place the URL `/foo/bar` before `/foo` or else the mapping for `/foo/bar` will never be reached.
+
+###### JSON Params
+
+| Field   | Type                                                                            | Description                  |
+| ------- | ------------------------------------------------------------------------------- | ---------------------------- |
+| url_map | array[[application proxy mapping](#application-proxy-mapping-structure) object] | The URLs mapped to the proxy |
+
+<RouteHeader method="GET" url="/oauth2/applications/{application.id}/assets" unauthenticated>
+  Get Application Assets
+</RouteHeader>
+
+Returns a list of [application assets](#application-asset-object) for the given application ID.
+
+###### Query String Params
+
+| Field    | Type    | Description                                                             |
+| -------- | ------- | ----------------------------------------------------------------------- |
+| nocache? | boolean | Whether to bypass the Cloudflare cache for the response (default false) |
+
+<RouteHeader method="POST" url="/oauth2/applications/{application.id}/assets">
+  Create Application Asset
+</RouteHeader>
+
+Creates a new application asset for the given application ID. User must be the owner of the application or developer of the current team. Returns an [application asset](#application-asset-object) object on success.
+
+<Alert type="info">
+
+Due to caching, it may take a while for the asset to be retrievable after creation.
+
+</Alert>
+
+###### JSON Params
+
+| Field | Type                              | Description                                      |
+| ----- | --------------------------------- | ------------------------------------------------ |
+| name  | string                            | The name of the asset                            |
+| type  | integer                           | The [type of the asset](#application-asset-type) |
+| image | [image data](/reference#cdn-data) | The asset's image                                |
+
+<RouteHeader method="DELETE" url="/oauth2/applications/{application.id}/assets/{asset.id}">
+  Delete Application Asset
+</RouteHeader>
+
+Deletes an application asset permanently. User must be the owner of the application or developer of the current team. Returns a 204 empty response on success.
+
+<RouteHeader method="POST" url="/applications/{application.id}/external-assets">
+  Proxy Application Assets
+</RouteHeader>
+
+Proxies a list of URLs for the given application ID. Returns a list of [external asset](#external-asset-structure) objects on success.
+
+###### JSON Params
+
+| Field | Type          | Description                                               |
+| ----- | ------------- | --------------------------------------------------------- |
+| urls  | array[string] | The URLs of the assets to proxy (max 256 characters, 1-2) |
+
+###### External Asset Structure
+
+| Field               | Type   | Description                                                                |
+| ------------------- | ------ | -------------------------------------------------------------------------- |
+| url                 | string | The URL of the asset                                                       |
+| external_asset_path | string | The path to the asset on the media proxy (`https://media.discordapp.net/`) |
+
+###### Example External Asset
+
+```json
+[
+  {
+    "url": "https://google.com/favicon.ico",
+    "external_asset_path": "external/OCZzr1eoglei1yFsfSMClt6B95EI9W-dOhq7fbnn5aY/https/google.com/favicon.ico"
+  }
+]
+```
+
+<RouteHeader method="POST" url="/applications/{application.id}/attachment" supportsOAuth2>
+  Create Application Attachment
+</RouteHeader>
+
+Uploads an ephemeral attachment to the application. Must be a `multipart/form-data` body. Requires the [`EMBEDDED` application flag](#application-flags).
+
+###### Form Params
+
+| Field | Type          | Description                                                |
+| ----- | ------------- | ---------------------------------------------------------- |
+| file  | file contents | The image file to upload, must be a JPEG, PNG, or GIF file |
+
+###### Response Body
+
+| Field      | Type                                                      | Description                      |
+| ---------- | --------------------------------------------------------- | -------------------------------- |
+| attachment | [attachment](/resources/message#attachment-object) object | The created ephemeral attachment |
+
+<RouteHeader method="GET" url="/applications/detectable" unauthenticated>
+  Get Detectable Applications
+</RouteHeader>
+
+Returns a list of [detectable application](#detectable-application-structure) objects representing games that can be detected by Discord for rich presence.
+
+###### Detectable Application Structure
+
+| Field                      | Type                                                                   | Description                                                                                                                                                                     |
+| -------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                         | snowflake                                                              | The ID of the application                                                                                                                                                       |
+| name                       | string                                                                 | The name of the application                                                                                                                                                     |
+| aliases                    | array[string]                                                          | Other names the application's game is associated with                                                                                                                           |
+| executables                | array[[application executable](#application-executable-object) object] | The unique executables of the application's game                                                                                                                                |
+| themes                     | array[string]                                                          | The themes of the application's game                                                                                                                                            |
+| hook                       | boolean                                                                | Whether the Discord client is allowed to hook into the application's game directly                                                                                              |
+| overlay                    | boolean                                                                | Whether the application's game supports the [Discord overlay](https://support.discord.com/hc/en-us/articles/217659737-Game-Overlay-101) (default false)                         |
+| overlay_methods            | ?integer                                                               | The [methods of overlaying](#overlay-method-flags) that the application's game supports                                                                                         |
+| overlay_warn               | boolean                                                                | Whether the [Discord overlay](https://support.discord.com/hc/en-us/articles/217659737-Game-Overlay-101) is known to be problematic with this application's game (default false) |
+| overlay_compatibility_hook | boolean                                                                | Whether to use the compatibility hook for the overlay (default false)                                                                                                           |
+
+###### Example Detectable Application
+
+```json
+{
+  "aliases": ["PUBG: BATTLEGROUNDS", "PUBG"],
+  "executables": [
+    {
+      "is_launcher": false,
+      "name": "win64/tslgame_be.exe",
+      "os": "win32"
+    },
+    {
+      "is_launcher": false,
+      "name": "win64/tslgame.exe",
+      "os": "win32"
+    },
+    {
+      "is_launcher": false,
+      "name": "tslgame.exe",
+      "os": "win32"
+    },
+    {
+      "is_launcher": false,
+      "name": "win64/tslgame_uc.exe",
+      "os": "win32"
+    },
+    {
+      "is_launcher": false,
+      "name": "tslgame_be.exe",
+      "os": "win32"
+    }
+  ],
+  "hook": true,
+  "id": "356873622985506820",
+  "name": "PLAYERUNKNOWN'S BATTLEGROUNDS",
+  "overlay": true,
+  "overlay_compatibility_hook": true,
+  "overlay_methods": null,
+  "overlay_warn": false,
+  "themes": ["Action", "Warfare"]
+}
+```
+
+<RouteHeader method="GET" url="/applications/public">
+  Get Partial Applications
+</RouteHeader>
+
+Returns a list of partial [application](#application-object) objects for the given IDs.
+
+###### Query String Params
+
+| Field           | Type             | Description                                                   |
+| --------------- | ---------------- | ------------------------------------------------------------- |
+| application_ids | array[snowflake] | The IDs of the applications to fetch; unknown IDs are ignored |
+
+<RouteHeader method="GET" url="/applications/{application.id}/public" supportsOAuth2>
+  Get Partial Application
+</RouteHeader>
+
+Returns a partial [application](#application-object) object for the given ID with all public application fields.
+
+###### Query String Params
+
+| Field       | Type    | Description                                                                                      |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------ |
+| with_guild? | boolean | Whether to include the guild object in the response if the guild is discoverable (default false) |
+
+<RouteHeader method="GET" url="/applications/{application.id}/rpc" unauthenticated>
+  Get Rich Presence Application
+</RouteHeader>
+
+Returns a partial [application](#application-object) object for the given ID with rich presence-related fields.
+
+<RouteHeader method="GET" url="/applications/{application.id}/disclosures">
+  Get Application Disclosures
+</RouteHeader>
+
+Returns an object representing additional safety disclosures for the application.
+
+###### Response Body
+
+| Field             | Type           | Description                                                                             |
+| ----------------- | -------------- | --------------------------------------------------------------------------------------- |
+| disclosures       | array[integer] | The [disclosures](#application-disclosure-type) of the application                      |
+| acked_disclosures | array[integer] | The [disclosures](#application-disclosure-type) that have been acknowledged by the user |
+| all_acked         | boolean        | Whether all disclosures have been acknowledged by the user                              |
+
+###### Application Disclosure Type
+
+| Value | Name                             | Description                                                                                                  |
+| ----- | -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 0     | UNSPECIFIED_DISCLOSURE           | Unspecified disclosure                                                                                       |
+| 1     | IP_LOCATION                      | Application may access the user's IP address                                                                 |
+| 2     | DISPLAYS_ADVERTISEMENTS          | Application may display advertisements                                                                       |
+| 3     | PARTNER_SDK_DATA_SHARING_MESSAGE | Application's game uses the social layer SDK's messaging features, which surface in-game messages on Discord |
+
+###### Example Response
+
+```json
+{
+  "disclosures": [1, 2],
+  "acked_disclosures": [1, 2],
+  "all_acked": true
+}
+```
+
+<RouteHeader method="POST" url="/applications/{application.id}/disclosures">
+  Acknowledge Application Disclosures
+</RouteHeader>
+
+Acknowledges a list of disclosures for the application.
+
+###### JSON Params
+
+| Field       | Type           | Description                                                                 |
+| ----------- | -------------- | --------------------------------------------------------------------------- |
+| disclosures | array[integer] | The [disclosures](#application-disclosure-type) to acknowledge for the user |
+
+###### Response Body
+
+| Field       | Type           | Description                                                                             |
+| ----------- | -------------- | --------------------------------------------------------------------------------------- |
+| disclosures | array[integer] | The [disclosures](#application-disclosure-type) that have been acknowledged by the user |
+
+<RouteHeader method="GET" url="/guilds/{guild.id}/applications">
+  Get Guild Applications
+</RouteHeader>
+
+Returns a list of [application](#application-object) objects attached to the given guild ID. Requires the `MANAGE_GUILD` permission.
+
+<Alert type="info">
+
+An application is considered attached to a guild if the [application's `guild_id` field](#application-object) is set to the guild's ID.
+
+</Alert>
+
+###### Query String Params
+
+| Field             | Type      | Description                                                                |
+| ----------------- | --------- | -------------------------------------------------------------------------- |
+| type?             | integer   | The [type of applications](#application-type) to return                    |
+| include_team? ^1^ | boolean   | Whether to include team information for owned applications (default false) |
+| channel_id?       | snowflake | The ID of the channel to filter by (TODO: what the fuck does this do)      |
+
+^1^ You must own the application or be a member of the owning team to receive this information.
+
+<RouteHeader method="POST" url="/unverified-applications">
+  Report Unverified Application
+</RouteHeader>
+
+Reports a game not detected and tracked to Discord. Returns an unverified application object on success.
+
+###### JSON Params
+
+| Field                    | Type                                                                 | Description                                                           |
+| ------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| report_version?          | integer                                                              | The version of the report (currently 3)                               |
+| name                     | string                                                               | The name of the application (2-100 characters)                        |
+| icon                     | string                                                               | The MD5 hash of the application's icon (32 characters)                |
+| os                       | string                                                               | The [operating system](#operating-system) the application is found on |
+| executable?              | string                                                               | The executable of the application (max 1024 characters)               |
+| publisher?               | string                                                               | The publisher of the application (2-100 characters)                   |
+| distributor_application? | [application distributor](#application-distributor-structure) object | The distributor of the application SKU                                |
+
+###### Application Distributor Structure
+
+| Field       | Type   | Description                                      |
+| ----------- | ------ | ------------------------------------------------ |
+| distributor | string | The [application distributor](#distributor-type) |
+| sku?        | string | The SKU of the application (max 256 characters)  |
+
+###### Operating System
+
+| Value  | Description |
+| ------ | ----------- |
+| win32  | Windows     |
+| darwin | macOS       |
+| linux  | Linux       |
+
+###### Response Body
+
+| Field        | Type          | Description                                                            |
+| ------------ | ------------- | ---------------------------------------------------------------------- |
+| name         | string        | The name of the application                                            |
+| hash         | string        | The unique hash of the application                                     |
+| missing_data | array[string] | The [missing data](#application-missing-data-type) for the application |
+
+###### Application Missing Data Type
+
+| Value | Description                                                                                                                                                  |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| icon  | The application's icon hash is not found and should be uploaded using the [Upload Unverified Application Icon](#upload-unverified-application-icon) endpoint |
+
+###### Example Response
+
+```json
+{
+  "name": "Alien Simulator",
+  "hash": "0312ce2c94e1fa8257fefbade4587fb3",
+  "missing_data": ["icon"]
+}
+```
+
+<RouteHeader method="POST" url="/unverified-applications/icons">
+  Upload Unverified Application Icon
+</RouteHeader>
+
+Uploads an unverified application's icon to Discord. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field            | Type                              | Description                        |
+| ---------------- | --------------------------------- | ---------------------------------- |
+| application_name | string                            | The name of the application        |
+| application_hash | string                            | The unique hash of the application |
+| icon             | [image data](/reference#cdn-data) | The application's icon             |
+
+<RouteHeader method="GET" url="/users/@me/applications/role-connections">
+  Get User Application Role Connections
+</RouteHeader>
+
+Returns a list of [application role connection](#application-role-connection-object) objects for the user.
+
+<RouteHeader
+  method="GET"
+  url="/users/@me/applications/{application.id}/role-connection"
+  supportsOAuth2="role_connections.write"
+>
+  Get User Application Role Connection
+</RouteHeader>
+
+Returns an [application role connection](#application-role-connection-object) object for the user, without optional fields.
+
+<Alert type="warn">
+
+This endpoint is only usable with an OAuth2 access token with the `role_connections.write` scope for the application specified in the path.
+
+</Alert>
+
+<RouteHeader
+  method="PUT"
+  url="/users/@me/applications/{application.id}/role-connection"
+  supportsOAuth2="role_connections.write"
+>
+  Modify User Application Role Connection
+</RouteHeader>
+
+<Alert type="warn">
+
+This endpoint is only usable with an OAuth2 access token with the `role_connections.write` scope for the application specified in the path.
+
+</Alert>
+
+Updates an application's role connection for the user. Returns the updated [application role connection](#application-role-connection-object) object on success.
+
+###### JSON Params
+
+| Field              | Type                | Description                                                                                                                                                                                                  |
+| ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| platform_name?     | string              | The vanity name of the platform a bot has connected (max 50 characters)                                                                                                                                      |
+| platform_username? | string              | The username on the platform a bot has connected (max 100 characters)                                                                                                                                        |
+| metadata?          | map[string, string] | Object mapping [application role connection metadata](#application-role-connection-metadata-object) keys to their `string`-ified value (max 100 characters) for the user on the platform a bot has connected |
+
+<RouteHeader method="GET" url="/applications/{application.id}/managed-links/">
+  Get Application Managed Links
+</RouteHeader>
+
+Returns a list of [activity link](#activity-link-object) objects for the given application ID. User must be the owner of the application or developer of the current team.
+
+<RouteHeader method="POST" url="/applications/{application.id}/managed-links/">
+  Create Application Managed Link
+</RouteHeader>
+
+Creates a new activity managed link. User must be the owner of the application or developer of the current team. Returns an [activity link](#activity-link-object) object on success.
+
+###### JSON Params
+
+| Field       | Type                              | Description                                            |
+| ----------- | --------------------------------- | ------------------------------------------------------ |
+| custom_id?  | ?string                           | A custom id for the activity link (1-256 characters)   |
+| description | string                            | The description of the activity link (1-64 characters) |
+| image       | [image data](/reference#cdn-data) | The activity link asset                                |
+| title       | string                            | The title of the activity link (1-32 characters)       |
+
+<RouteHeader method="GET" url="/applications/{application.id}/managed-links/{link_id}">
+  Get Application Managed Link
+</RouteHeader>
+
+Returns an [activity link](#activity-link-object) object for the given ID.
+
+<RouteHeader method="PATCH" url="/applications/{application.id}/managed-links/{link_id}">
+  Update Application Managed Link
+</RouteHeader>
+
+Updates the specified activity link for the given application ID. User must be the owner of the application or developer of the current team. Returns an [activity link](#activity-link-object) object on success.
+
+<RouteHeader method="DELETE" url="/applications/{application.id}/managed-links/{link_id}">
+  Delete Application Managed Link
+</RouteHeader>
+
+Deletes the specified activity link for the given application ID. User must be the owner of the application or developer of the current team. Returns a 204 empty response on success.
+
+<RouteHeader method="POST" url="/applications/{application.id}/quick-links/" supportsOAuth2>
+  Create Application Quick Link
+</RouteHeader>
+
+Creates a new activity quick link. Returns an [activity link](#activity-link-object) object on success.
+
+<Alert type="warn">
+
+When using OAuth2, quick links can be only created for the application that the access token belongs to.
+
+</Alert>
+
+###### JSON Params
+
+| Field       | Type                              | Description                                            |
+| ----------- | --------------------------------- | ------------------------------------------------------ |
+| custom_id?  | ?string                           | A custom id for the activity link (1-256 characters)   |
+| description | string                            | The description of the activity link (1-64 characters) |
+| image       | [image data](/reference#cdn-data) | The activity link asset                                |
+| title       | string                            | The title of the activity link (1-32 characters)       |
+
+<RouteHeader method="GET" url="/applications/{application.id}/quick-links/{link_id}" unauthenticated>
+  Get Application Quick Link
+</RouteHeader>
+
+Returns an [activity link](#activity-link-object) object for the given ID.
+
+<RouteHeader method="POST" url="/applications/{application.id}/auto-verification">
+  Verify Application
+</RouteHeader>
+
+Verifies an Application and allows it to scale past 100 servers.
+
+<Alert type="note">
+
+Requires no request body and responds with 204 No Content, unless the application is ineligible to be verified or the user is not the owner of the team in which case 400 Bad Request with an error code is returned.
+
+</Alert>

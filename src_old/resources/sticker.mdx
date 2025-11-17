@@ -1,0 +1,217 @@
+# Stickers
+
+Stickers are embedded images that can be sent along with messages. They can be either standard stickers, which are official, first-party stickers, or guild stickers, which are custom stickers uploaded by users in a guild.
+
+### Sticker Pack Object
+
+A pack of standard stickers.
+
+###### Sticker Pack Structure
+
+| Field             | Type                                     | Description                                                            |
+| ----------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| id                | snowflake                                | The ID of the sticker pack                                             |
+| stickers          | array[[sticker](#sticker-object) object] | The stickers in the pack                                               |
+| name              | string                                   | The name of the sticker pack                                           |
+| sku_id            | snowflake                                | The ID of the pack's SKU                                               |
+| cover_sticker_id? | snowflake                                | The ID of a sticker in the pack which is shown as the pack's icon      |
+| description       | string                                   | The description for the sticker pack                                   |
+| banner_asset_id?  | snowflake                                | The ID of the sticker pack's [banner image](/reference#cdn-formatting) |
+
+###### Example Sticker Pack
+
+```json
+{
+  "id": "847199849233514549",
+  "stickers": [],
+  "name": "Wumpus Beyond",
+  "sku_id": "847199849233514547",
+  "cover_sticker_id": "749053689419006003",
+  "description": "Say hello to Wumpus!",
+  "banner_asset_id": "761773777976819732"
+}
+```
+
+### Sticker Object
+
+A sticker that can be sent in messages.
+
+###### Sticker Structure
+
+| Field       | Type                                               | Description                                                                                        |
+| ----------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| id          | snowflake                                          | The [ID of the sticker](/reference#cdn-formatting)                                                 |
+| pack_id?    | snowflake                                          | For standard stickers, ID of the pack the sticker is from                                          |
+| name        | string                                             | The name of the sticker (2-30 characters)                                                          |
+| description | ?string                                            | The description for the sticker (max 100 characters)                                               |
+| tags ^2^    | string                                             | Autocomplete/suggestion tags for the sticker (1-200 characters)                                    |
+| type        | integer                                            | The [type of sticker](#sticker-types)                                                              |
+| format_type | integer                                            | The [type of format](#sticker-format-types) for the sticker                                        |
+| available?  | boolean                                            | Whether this guild sticker can be used; may be false due to loss of premium subscriptions (boosts) |
+| guild_id?   | snowflake                                          | The ID of the guild the sticker is attached to                                                     |
+| user? ^1^   | partial [user](/resources/user#user-object) object | The user that uploaded the guild sticker                                                           |
+| sort_value? | integer                                            | The standard sticker's sort order within its pack                                                  |
+
+^1^ Only included for guild stickers when fetched through the [Get Guild Stickers](#get-guild-stickers) or [Get Guild Sticker](#get-guild-sticker) endpoints by a user with the `MANAGE_EXPRESSIONS` permission.
+
+^2^ A comma separated list of keywords is the format used in this field by standard stickers, but this is just a convention.
+Incidentally, official clients will always use a name generated from an emoji as the value of this field when creating or modifying a guild sticker.
+
+###### Sticker Types
+
+| Value | Name     | Description                                                 |
+| ----- | -------- | ----------------------------------------------------------- |
+| 1     | STANDARD | An official sticker in a current or legacy purchasable pack |
+| 2     | GUILD    | A sticker uploaded to a guild for the guild's members       |
+
+###### Sticker Format Types
+
+<Alert type="info">
+
+GIF stickers are not available through the [CDN](/reference#cdn-formatting), and must be accessed at `https://media.discordapp.net/stickers/{sticker_id}.gif`.
+
+</Alert>
+
+| Value | Name   | Description                                                                                                                                      |
+| ----- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | PNG    | A PNG image                                                                                                                                      |
+| 2     | APNG   | An animated PNG image, using the APNG format                                                                                                     |
+| 3     | LOTTIE | A [lottie](https://airbnb.design/lottie/) animation; requires the `VERIFIED` and/or `PARTNERED` [guild feature](/resources/guild#guild-features) |
+| 4     | GIF    | An animated GIF image                                                                                                                            |
+
+###### Example Sticker
+
+```json
+{
+  "id": "749054660769218631",
+  "name": "Wave",
+  "tags": "wumpus, hello, sup, hi, oi, heyo, heya, yo, greetings, greet, welcome, wave, :wave, :hello, :hi, :hey, hey, \ud83d\udc4b, \ud83d\udc4b\ud83c\udffb, \ud83d\udc4b\ud83c\udffc, \ud83d\udc4b\ud83c\udffd, \ud83d\udc4b\ud83c\udffe, \ud83d\udc4b\ud83c\udfff, goodbye, bye, see ya, later, laterz, cya",
+  "type": 1,
+  "format_type": 3,
+  "description": "Wumpus waves hello",
+  "asset": "",
+  "pack_id": "847199849233514549",
+  "sort_value": 12
+}
+```
+
+### Sticker Item Object
+
+The smallest amount of data required to render a sticker. A partial sticker object.
+
+###### Sticker Item Structure
+
+| Field       | Type      | Description                                                 |
+| ----------- | --------- | ----------------------------------------------------------- |
+| id          | snowflake | The [ID of the sticker](/reference#cdn-formatting)          |
+| name        | string    | The name of the sticker                                     |
+| format_type | integer   | The [type of format](#sticker-format-types) for the sticker |
+
+## Endpoints
+
+<RouteHeader method="GET" url="/sticker-packs" unauthenticated>
+  Get Sticker Packs
+</RouteHeader>
+
+Returns the list of [sticker packs](#sticker-pack-object) available to use.
+
+###### Response Body
+
+| Field         | Type                                               | Description                 |
+| ------------- | -------------------------------------------------- | --------------------------- |
+| sticker_packs | array[[sticker pack](#sticker-pack-object) object] | The sticker packs available |
+
+<RouteHeader method="GET" url="/sticker-packs/{pack.id}">
+  Get Sticker Pack
+</RouteHeader>
+
+Returns a [sticker pack](#sticker-pack-object) object for the given pack ID.
+
+<RouteHeader method="GET" url="/stickers/{sticker.id}">
+  Get Sticker
+</RouteHeader>
+
+Returns a [sticker](#sticker-object) object for the given sticker ID.
+
+<RouteHeader method="GET" url="/stickers/{sticker.id}/guild">
+  Get Sticker Guild
+</RouteHeader>
+
+Returns a [discoverable guild](/resources/discovery#discoverable-guild-object) object for the guild that owns the given sticker. This endpoint requires the guild to be discoverable, not be [auto-removed](/resources/discovery#discoverable-guild-object), and have [guild expression discoverability](/resources/discovery#discovery-metadata-object) enabled.
+
+<RouteHeader method="GET" url="/guilds/{guild.id}/stickers">
+  Get Guild Stickers
+</RouteHeader>
+
+Returns an array of [sticker](#sticker-object) objects for the given guild. Includes the `user` field if the user has the `CREATE_EXPRESSIONS` or `MANAGE_EXPRESSIONS` permission.
+
+<RouteHeader method="GET" url="/guilds/{guild.id}/stickers/{sticker.id}">
+  Get Guild Sticker
+</RouteHeader>
+
+Returns a [sticker](#sticker-object) object for the given guild and sticker IDs. Includes the `user` field if the user has the `CREATE_EXPRESSIONS` or `MANAGE_EXPRESSIONS` permission.
+
+<RouteHeader method="POST" url="/guilds/{guild.id}/stickers" supportsAuditReason>
+  Create Guild Sticker
+</RouteHeader>
+
+Creates a new sticker for the guild. Must be a `multipart/form-data` body. Requires the `CREATE_EXPRESSIONS` permission. Returns the new [sticker](#sticker-object) object on success. Fires a [Guild Stickers Update](/topics/gateway-events#guild-stickers-update) Gateway event.
+
+Every guilds has five free sticker slots by default, and each premium tier (boost level) will grant access to more slots.
+
+<Alert type="info">
+
+Lottie stickers can only be uploaded on guilds that have either the `VERIFIED` and/or `PARTNERED` [guild feature](/resources/guild#guild-features).
+
+</Alert>
+
+<Alert type="warn">
+
+Stickers have a maximum file size of **500 KiB** (**1.5 MiB** for employees). Attempting to upload a sticker larger than this limit will fail with a 400 bad request.
+
+</Alert>
+
+<Collapsible title="Sticker Limits" description="How are sticker slots calculated?" icon="list">
+
+Sticker limits are applied to the total amount of stickers in the guild, making them a lot simpler than emoji limits. The default sticker limit is 50.
+The real limit depends on the guild's [premium tier](https://support.discord.com/hc/en-us/articles/360028038352) and [features](/resources/guild#guild-features).
+
+These limits are summarized in the following table by [premium tier](/resources/guild#premium-tier). Note that if the guild has the [`MORE_STICKERS` feature](/resources/guild#guild-features), the applied limit is always the tier 3 one (60).
+
+| Premium Tier | Sticker Limit |
+| ------------ | ------------- |
+| `NONE`       | 5             |
+| `TIER_1`     | 15            |
+| `TIER_2`     | 30            |
+| `TIER_3`     | 60            |
+
+</Collapsible>
+
+###### Form Params
+
+| Field       | Type          | Description                                                               |
+| ----------- | ------------- | ------------------------------------------------------------------------- |
+| name        | string        | The name of the sticker (2-30 characters)                                 |
+| description | string        | The description for the sticker (max 100 characters)                      |
+| tags        | string        | Autocomplete/suggestion tags for the sticker (1-200 characters)           |
+| file        | file contents | The sticker file to upload, must be a PNG, APNG, GIF, or Lottie JSON file |
+
+<RouteHeader method="PATCH" url="/guilds/{guild.id}/stickers/{sticker.id}" supportsAuditReason>
+  Modify Guild Sticker
+</RouteHeader>
+
+Modifies the given sticker. For stickers created by the current user, requires either the `CREATE_EXPRESSIONS` or `MANAGE_EXPRESSIONS` permission. For other stickers, requires the `MANAGE_EXPRESSIONS` permission. Returns the updated [sticker](#sticker-object) object on success. Fires a [Guild Stickers Update](/topics/gateway-events#guild-stickers-update) Gateway event.
+
+###### JSON Params
+
+| Field        | Type    | Description                                                     |
+| ------------ | ------- | --------------------------------------------------------------- |
+| name?        | string  | The name of the sticker (2-30 characters)                       |
+| description? | ?string | The description for the sticker (max 100 characters)            |
+| tags?        | string  | Autocomplete/suggestion tags for the sticker (1-200 characters) |
+
+<RouteHeader method="DELETE" url="/guilds/{guild.id}/stickers/{sticker.id}" supportsAuditReason>
+  Delete Guild Sticker
+</RouteHeader>
+
+Deletes the given sticker. For stickers created by the current user, requires either the `CREATE_EXPRESSIONS` or `MANAGE_EXPRESSIONS` permission. For other stickers, requires the `MANAGE_EXPRESSIONS` permission. Returns a 204 empty response on success. Fires a [Guild Stickers Update](/topics/gateway-events#guild-stickers-update) Gateway event.

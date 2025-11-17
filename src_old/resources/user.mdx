@@ -1,0 +1,2080 @@
+---
+sort-name: User
+---
+
+# Users
+
+Users in Discord are generally considered the base entity. Users can spawn across the entire platform, be members of
+guilds, participate in text and voice chat, and much more. Users are separated by a distinction of "bot" vs "normal". Although they are similar, bot users are automated users that are attached to an application, "owned" by another user. Unlike normal users, bot users do
+_not_ have a limitation on the number of guilds they can be a part of.
+
+### Usernames and Nicknames
+
+Discord enforces the following restrictions for usernames, display names, and nicknames:
+
+1.  Names can contain most valid unicode characters. We limit some zero-width and non-rendering characters.
+2.  Usernames must be between 2 and 32 characters long.
+3.  Display names and nicknames must be between 1 and 32 characters long.
+4.  Webhook names must be between 1 and 80 characters long.
+5.  Names are sanitized and trimmed of leading, trailing, and excessive internal whitespace.
+
+The following restrictions are additionally enforced for usernames and display names:
+
+1.  Usernames cannot contain the following substrings: '@', '#', ':', '\```'.
+2.  Usernames and display names cannot be: 'everyone', 'here', 'system message', or contain 'discord'.
+
+The following restrictions are additionally enforced for webhook names:
+
+1.  Webhook names cannot contain the following substrings: 'clyde'.
+
+[Migrated usernames](#unique-usernames) are subject to a new set of restrictions in addition to the above:
+
+1.  Migrated usernames can only contain lowercase alphanumeric characters, underscores (`_`), and periods (`.`). Uppercase characters, spaces, dashes (`-`), and other special characters are not allowed.
+2.  Migrated usernames cannot have two or more consecutive periods (`..`).
+3.  Migrated usernames are unique to each user, and no two users can share the same username.
+
+There are other rules and restrictions not shared here for the sake of spam and abuse mitigation, but the majority of users won't encounter them. It's important to properly handle all error messages returned by Discord when editing or updating names.
+
+### Unique Usernames
+
+Discord's username system is changing. Discriminators are being removed and new, unique usernames (`@name`) and display names are being introduced. Internally, this migration is referred to as "pomelo". You can read more details about how the changes to the username system affect user accounts in the [general Help Center article](https://dis.gd/usernames). To learn how it impacts bots specifically, you can read the [Developer Help Center article](https://dis.gd/app-usernames).
+
+A user's legacy `username#discriminator` tag will still be usable to [send friend requests](/resources/relationships#send-friend-request), and will be available as a [profile badge](#profile-badge-structure) for migrated users.
+
+#### Identifying Migrated Users
+
+The value of a single zero (`0`) in the [`discriminator` field on the user object](#user-object) indicates that the user has ~~been pommeled~~ migrated to the new username system. Note that the discriminator for migrated users will _not_ be 4-digits like a standard discriminator (it is `0`, not `0000`). The value of the `username` field will become the migrated user's unique username.
+
+#### Migrating
+
+~~Users can only migrate their account to pomelo if they are in the rollout. A user is in the rollout if they have `pomelo` in the [`disclose` field on the Ready Supplemental event](/topics/gateway-events#ready-supplemental) and are [in the `2023-03_pomelo` user experiment](/topics/experiments#user-experiments).~~
+Migration is now complete and all non-migrated users have been automatically assigned a unique username.
+
+To migrate, users should first [check if the username they want is available](#get-unique-username-eligibility), and then [migrate their account to that username](#create-unique-username). If the username they want is not available, they can [get a list of suggested usernames](#get-unique-username-suggestions) to choose from.
+
+#### Display Names
+
+As part of unique usernames, user accounts can define a non-unique display name. This value is a new nullable `global_name` field with a max length of 32 characters.
+
+#### Default Avatars
+
+For users with migrated accounts, default avatar URLs will be based on the user ID instead of the discriminator. The URL can be calculated using `(user_id >> 22) % 6`. For non-migrated accounts, the URL can be calculated using `discriminator % 5`.
+
+### User Object
+
+###### User Structure
+
+| Field                        | Type                                                                     | Description                                                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| id                           | snowflake                                                                | The ID of the user                                                                                              |
+| username ^5^                 | string                                                                   | The user's username, may be unique across the platform (2-32 characters)                                        |
+| discriminator ^5^            | string                                                                   | The user's stringified 4-digit Discord tag                                                                      |
+| global_name ^5^              | ?string                                                                  | The user's display name (1-32 characters)                                                                       |
+| avatar                       | ?string                                                                  | The user's [avatar hash](/reference#cdn-formatting)                                                             |
+| avatar_decoration_data       | ?[avatar decoration data](#avatar-decoration-data-structure) object      | The user's [avatar decoration](https://support.discord.com/hc/en-us/articles/13410113109911-Avatar-Decorations) |
+| collectibles                 | ?[collectibles](#collectibles-structure) object                          | The user's equipped collectibles                                                                                |
+| primary_guild?               | ?[primary guild](#primary-guild-structure) object                        | The primary guild of the user                                                                                   |
+| linked_users ^1^ ^3^         | array[[linked user](/resources/family-center#linked-user-object) object] | The linked users connected to the account via [Family Center](/resources/family-center)                         |
+| bot?                         | boolean                                                                  | Whether the user is a bot account                                                                               |
+| system?                      | boolean                                                                  | Whether the user is an official Discord System user (part of the urgent message system)                         |
+| mfa_enabled                  | boolean                                                                  | Whether the user has multi-factor authentication enabled on their account                                       |
+| nsfw_allowed? ^1^            | ?boolean                                                                 | Whether the user is allowed to see NSFW content, `null` if not yet known                                        |
+| age_verification_status ^1^  | integer                                                                  | The [age verification status](#age-verification-status) of the user                                             |
+| pronouns? ^1^ ^4^            | string                                                                   | The user's pronouns (max 40 characters)                                                                         |
+| bio ^1^                      | string                                                                   | The user's bio (max 190 characters)                                                                             |
+| banner                       | ?string                                                                  | The user's [banner hash](/reference#cdn-formatting)                                                             |
+| accent_color                 | ?integer                                                                 | The user's banner color encoded as an integer representation of a hexadecimal color code                        |
+| locale? ^3^                  | string                                                                   | The [language option](/reference#locales) chosen by the user                                                    |
+| verified ^2^                 | boolean                                                                  | Whether the email on this account has been verified                                                             |
+| email ^2^                    | ?string                                                                  | The user's email address                                                                                        |
+| phone? ^1^                   | ?string                                                                  | The user's E.164-formatted phone number                                                                         |
+| premium **(deprecated)** ^4^ | boolean                                                                  | Whether the user is subscribed to Nitro                                                                         |
+| premium_type                 | integer                                                                  | The [type of premium (Nitro) subscription](#premium-type) on a user's account                                   |
+| personal_connection_id?      | snowflake                                                                | The ID of the user's personal, non-employee user account                                                        |
+| flags ^1^                    | integer                                                                  | The [flags](#user-flags) on a user's account                                                                    |
+| public_flags                 | integer                                                                  | The public [flags](#user-flags) on a user's account                                                             |
+| purchased_flags? ^1^         | integer                                                                  | The [purchased flags](#purchased-flags) on a user's account                                                     |
+| premium_usage_flags? ^1^     | integer                                                                  | The [premium usage flags](#premium-usage-flags) on a user's account                                             |
+| desktop? ^1^ ^4^             | boolean                                                                  | Whether the user has used the desktop client before                                                             |
+| mobile? ^1^ ^4^              | boolean                                                                  | Whether the user has used the mobile client before                                                              |
+| has_bounced_email? ^1^       | boolean                                                                  | Whether the user's email has failed to deliver and is no longer valid                                           |
+| authenticator_types? ^3^     | array[integer]                                                           | The [types of multi-factor authenticators](#authenticator-type) the user has enabled                            |
+| display_name_styles?         | ?[display name style](#display-name-style-structure) object              | The user's display name style                                                                                   |
+
+^1^ Not included when fetching a user via OAuth2.
+
+^2^ Not included when fetching a user via OAuth2 without the `email` scope.
+
+^3^ Not included in the user object returned in the [Ready event](/topics/gateway-events#ready).
+
+^4^ Only included in the user object returned in the [Ready event](/topics/gateway-events#ready).
+
+^5^ See the [section on Discord's new username system](#unique-usernames) for more information.
+
+###### Partial User Structure
+
+| Field                   | Type                                                             | Description                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| id                      | snowflake                                                        | The ID of the user                                                                                              |
+| username ^1^            | string                                                           | The user's username, may be unique across the platform (2-32 characters)                                        |
+| discriminator ^1^       | string                                                           | The user's stringified 4-digit Discord tag                                                                      |
+| global_name? ^1^        | ?string                                                          | The user's display name (1-32 characters)                                                                       |
+| avatar                  | ?string                                                          | The user's [avatar hash](/reference#cdn-formatting)                                                             |
+| avatar_decoration_data? | ?[avatar decoration data](#avatar-decoration-data-object) object | The user's [avatar decoration](https://support.discord.com/hc/en-us/articles/13410113109911-Avatar-Decorations) |
+| collectibles            | ?[collectibles](#collectibles-structure) object                  | The user's equipped collectibles                                                                                |
+| primary_guild?          | ?[primary guild](#primary-guild-structure) object                | The primary guild of the user                                                                                   |
+| bot?                    | boolean                                                          | Whether the user is a bot account                                                                               |
+| system?                 | boolean                                                          | Whether the user is an official Discord System user (part of the urgent message system)                         |
+| banner? ^2^             | ?string                                                          | The user's [banner hash](/reference#cdn-formatting)                                                             |
+| accent_color? ^2^       | ?integer                                                         | The user's banner color encoded as an integer representation of a hexadecimal color code                        |
+| public_flags?           | integer                                                          | The public [flags](#user-flags) on a user's account                                                             |
+| display_name_styles?    | ?[display name style](#display-name-style-structure) object      | The user's display name style                                                                                   |
+
+^1^ See the [section on Discord's new username system](#unique-usernames) for more information.
+
+^2^ Only guaranteed to be included when fetched through the [Get User](#get-user) and [Get User Profile](#get-user-profile) endpoints. May be included in data received through other API endpoints.
+
+^3^ Only guaranteed to be included when fetched through the [Get User](#get-user) endpoint or the [`author` field on the message object](/resources/message#message-object). May be included in data received through other API endpoints.
+
+###### Primary Guild Structure
+
+| Field                 | Type       | Description                                           |
+| --------------------- | ---------- | ----------------------------------------------------- |
+| identity_enabled ^1^  | ?boolean   | Whether the user is displaying their guild tag        |
+| identity_guild_id ^2^ | ?snowflake | The ID of the guild                                   |
+| tag ^1^               | ?string    | The user's guild tag (max 4 characters)               |
+| badge ^1^             | ?string    | The [guild tag badge hash](/reference#cdn-formatting) |
+
+^1^ This field is `null` when a user has not reaffirmed their identity after a tag change.
+
+^2^ Only populated for users with `identity_enabled` not set to `false`.
+
+###### User Flags
+
+| Value       | Name                                 | Description                                                                                                                              | Public  |
+| ----------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 1 << 0      | STAFF                                | Discord Staff                                                                                                                            | Yes     |
+| 1 << 1      | PARTNER                              | Partnered Server Owner                                                                                                                   | Yes     |
+| 1 << 2      | HYPESQUAD                            | HypeSquad Events                                                                                                                         | Yes     |
+| 1 << 3      | BUG_HUNTER_LEVEL_1                   | Level 1 Discord Bug Hunter                                                                                                               | Yes     |
+| 1 << 4      | MFA_SMS                              | SMS enabled as a multi-factor authentication backup                                                                                      | No      |
+| 1 << 5      | PREMIUM_PROMO_DISMISSED              | User has dismissed the current premium (Nitro) promotion                                                                                 | No      |
+| 1 << 6      | HYPESQUAD_ONLINE_HOUSE_1             | HypeSquad Bravery                                                                                                                        | Yes     |
+| 1 << 7      | HYPESQUAD_ONLINE_HOUSE_2             | HypeSquad Brilliance                                                                                                                     | Yes     |
+| 1 << 8      | HYPESQUAD_ONLINE_HOUSE_3             | HypeSquad Balance                                                                                                                        | Yes     |
+| 1 << 9      | PREMIUM_EARLY_SUPPORTER              | Early Premium (Nitro) Supporter                                                                                                          | Yes     |
+| 1 << 10     | TEAM_PSEUDO_USER                     | User is a [Team](/resources/team)                                                                                                        | Yes     |
+| 1 << 11     | IS_HUBSPOT_CONTACT                   | User is registered on Discord's [HubSpot](https://www.hubspot.com/) customer platform, used for official Discord programs (e.g. partner) | No ^1^  |
+| ~~1 << 12~~ | ~~SYSTEM~~                           | ~~User is a system user (i.e. official Discord account)~~                                                                                | ~~Yes~~ |
+| 1 << 13     | HAS_UNREAD_URGENT_MESSAGES           | User has unread urgent system messages; an urgent message is one sent from Trust and Safety                                              | No      |
+| 1 << 14     | BUG_HUNTER_LEVEL_2                   | Level 2 Discord Bug Hunter                                                                                                               | Yes     |
+| 1 << 15     | UNDERAGE_DELETED                     | User is scheduled for deletion for being under the minimum required age                                                                  | No ^1^  |
+| 1 << 16     | VERIFIED_BOT                         | Verified Bot                                                                                                                             | Yes     |
+| 1 << 17     | VERIFIED_DEVELOPER                   | Early Verified Bot Developer                                                                                                             | Yes     |
+| 1 << 18     | CERTIFIED_MODERATOR                  | Moderator Programs Alumni                                                                                                                | Yes     |
+| 1 << 19     | BOT_HTTP_INTERACTIONS                | Bot uses only HTTP interactions and is shown in the online member list                                                                   | Yes     |
+| 1 << 20     | SPAMMER                              | User is marked as a spammer and has their messages collapsed in the UI                                                                   | Yes     |
+| ~~1 << 21~~ | ~~DISABLE_PREMIUM~~                  | ~~User has manually disabled premium (Nitro) features~~                                                                                  | ~~No~~  |
+| 1 << 22     | ACTIVE_DEVELOPER                     | [Active Developer](https://support-dev.discord.com/hc/articles/10113997751447)                                                           | Yes     |
+| 1 << 23     | PROVISIONAL_ACCOUNT                  | User is a provisional account used with the social layer integration                                                                     | Yes     |
+| 1 << 33     | HIGH_GLOBAL_RATE_LIMIT               | User has their global ratelimit raised to 1,200 requests per second                                                                      | No ^1^  |
+| 1 << 34     | DELETED                              | User's account is deleted                                                                                                                | No ^1^  |
+| 1 << 35     | DISABLED_SUSPICIOUS_ACTIVITY         | User's account is disabled for suspicious activity and must reset their password to regain access                                        | No ^1^  |
+| 1 << 36     | SELF_DELETED                         | User deleted their own account                                                                                                           | No ^1^  |
+| 1 << 37     | PREMIUM_DISCRIMINATOR                | User has a premium (Nitro) custom discriminator                                                                                          | No ^1^  |
+| 1 << 38     | USED_DESKTOP_CLIENT                  | User has used the desktop client                                                                                                         | No ^1^  |
+| 1 << 39     | USED_WEB_CLIENT                      | User has used the web client                                                                                                             | No ^1^  |
+| 1 << 40     | USED_MOBILE_CLIENT                   | User has used the mobile client                                                                                                          | No ^1^  |
+| 1 << 41     | DISABLED                             | User's account is disabled                                                                                                               | No ^1^  |
+| 1 << 43     | HAS_SESSION_STARTED                  | User has started at least one Gateway session and is now eligible to send messages                                                       | No ^1^  |
+| 1 << 44     | QUARANTINED                          | User is quarantined and cannot create DMs or accept invites                                                                              | No      |
+| 1 << 47     | PREMIUM_ELIGIBLE_FOR_UNIQUE_USERNAME | User is eligible for early access to [unique usernames](#create-unique-username)                                                         | No ^1^  |
+| 1 << 50     | COLLABORATOR                         | User is a collaborator and is considered staff                                                                                           | No      |
+| 1 << 51     | RESTRICTED_COLLABORATOR              | User is a restricted collaborator and is considered staff                                                                                | No      |
+
+^1^ Not exposed to the API, can only be found in [user data harvests](#harvest-object).
+
+###### Purchased Flags
+
+Purchased flags denote what premium items a user has ever purchased. Visit the [Nitro](https://discord.com/nitro) page to learn more about the premium plans currently offered.
+
+| Value  | Name             | Description                      |
+| ------ | ---------------- | -------------------------------- |
+| 1 << 0 | NITRO_CLASSIC    | User has purchased Nitro classic |
+| 1 << 1 | NITRO            | User has purchased regular Nitro |
+| 1 << 2 | GUILD_BOOST      | User has purchased a guild boost |
+| 1 << 3 | NITRO_BASIC      | User has purchased Nitro basic   |
+| 1 << 4 | ON_REVERSE_TRIAL | User has a reverse trial active  |
+
+###### Premium Usage Flags
+
+Premium usage flags denote what premium (Nitro) features a user has utilized.
+
+| Value  | Name                  | Description                              |
+| ------ | --------------------- | ---------------------------------------- |
+| 1 << 0 | PREMIUM_DISCRIMINATOR | User has utilized premium discriminators |
+| 1 << 1 | ANIMATED_AVATAR       | User has utilized animated avatars       |
+| 1 << 2 | PROFILE_BANNER        | User has utilized profile banners        |
+
+###### Premium Type
+
+Premium types denote the level of premium a user has. Visit the [Nitro](https://discord.com/nitro) page to learn more about the premium plans currently offered.
+
+| Value | Name                  | Description   |
+| ----- | --------------------- | ------------- |
+| 0     | NONE **(deprecated)** | No Nitro      |
+| 1     | TIER_1                | Nitro Classic |
+| 2     | TIER_2                | Nitro         |
+| 3     | TIER_3                | Nitro Basic   |
+
+###### Age Verification Status
+
+| Value | Name           | Description                     |
+| ----- | -------------- | ------------------------------- |
+| 1     | UNVERIFIED     | User has not verified their age |
+| 2     | VERIFIED_TEEN  | User is a verified teenager     |
+| 3     | VERIFIED_ADULT | User is a verified adult        |
+
+###### Required Action Type
+
+Denotes an action Discord requires the user to take before they can continue using the platform. In some cases, multiple actions may be required, and the user must complete all of them before they can continue using Discord.
+
+| Value                                        | Description                                                                                                                                 | Action                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AGREEMENTS                                   | The user must re-indicate their agreement of Discord's terms of service and privacy policy; this does not limit the user from using Discord | [Reaffirm agreements](#modify-user-agreements)                                                                                                                                     |
+| ~~REQUIRE_CAPTCHA~~                          | ~~The user must complete a reCAPTCHA challenge~~                                                                                            | ~~[Complete a reCAPTCHA challenge](#verify-user-captcha)~~                                                                                                                         |
+| REQUIRE_VERIFIED_EMAIL                       | The user must add and verify an email address to their account                                                                              | [Add an email address](/topics/email-verification#adding-an-email-address)                                                                                                         |
+| REQUIRE_REVERIFIED_EMAIL                     | The user must reverify their existing email address                                                                                         | [Reverify your email address](/topics/email-verification#reverifying-your-email-address)                                                                                           |
+| REQUIRE_VERIFIED_PHONE                       | The user must add a phone number to their account                                                                                           | [Add a phone number](/topics/phone-verification#adding-a-phone-number)                                                                                                             |
+| REQUIRE_REVERIFIED_PHONE                     | The user must reverify their existing phone number                                                                                          | [Reverify your phone number](/topics/phone-verification#reverifying-your-phone-number)                                                                                             |
+| ~~REQUIRE_VERIFIED_PHONE_THEN_EMAIL~~        | ~~The user must add a phone number to their account and then add and verify an email address to their account~~                             | ~~[Add a phone number](/topics/phone-verification#adding-a-phone-number) and [add an email address](/topics/email-verification#adding-an-email-address)~~                          |
+| REQUIRE_VERIFIED_EMAIL_OR_VERIFIED_PHONE     | The user must add and verify an email address to their account or add a phone number to their account                                       | [Add an email address](/topics/email-verification#adding-an-email-address) or [add a phone number](/topics/phone-verification#adding-a-phone-number)                               |
+| REQUIRE_REVERIFIED_EMAIL_OR_VERIFIED_PHONE   | The user must reverify their existing email address or add a phone number to their account                                                  | [Reverify your email address](/topics/email-verification#reverifying-your-email-address) or [add a phone number](/topics/phone-verification#adding-a-phone-number)                 |
+| REQUIRE_VERIFIED_EMAIL_OR_REVERIFIED_PHONE   | The user must add and verify an email address to their account or reverify their existing phone number                                      | [Add an email address](/topics/email-verification#adding-an-email-address) or [reverify your phone number](/topics/phone-verification#reverifying-your-phone-number)               |
+| REQUIRE_REVERIFIED_EMAIL_OR_REVERIFIED_PHONE | The user must reverify their existing email address or reverify their existing phone number                                                 | [Reverify your email address](/topics/email-verification#reverifying-your-email-address) or [reverify your phone number](/topics/phone-verification#reverifying-your-phone-number) |
+
+###### Example User
+
+```json
+{
+  "id": "80351110224678912",
+  "username": "nelly",
+  "global_name": "Nelly",
+  "avatar": "8342729096ea3675442027381ff50dfe",
+  "discriminator": "0",
+  "public_flags": 64,
+  "flags": 96,
+  "purchased_flags": 10,
+  "premium_usage_flags": 4,
+  "banner": "06c16474723fe537c283b8efa61a30c8",
+  "accent_color": null,
+  "bio": "I'm a bot!",
+  "locale": "en-US",
+  "nsfw_allowed": true,
+  "mfa_enabled": true,
+  "premium_type": 2,
+  "avatar_decoration_data": {
+    "sku_id": "1144058844004233369",
+    "asset": "a_fed43ab12698df65902ba06727e20c0e",
+    "expires_at": null
+  },
+  "email": "nelly@discord.com",
+  "verified": true,
+  "phone": "+18885940085",
+  "authenticator_types": [1, 2, 3],
+  "primary_guild": {
+    "identity_guild_id": "80351110224678913",
+    "identity_enabled": true,
+    "tag": "MEOW",
+    "badge": "7d1734ae5a615e82bc7a4033b98fade8"
+  }
+}
+```
+
+###### Example Partial User
+
+```json
+{
+  "id": "80351110224678912",
+  "username": "nelly",
+  "avatar": "8342729096ea3675442027381ff50dfe",
+  "discriminator": "0",
+  "public_flags": 64,
+  "banner": "06c16474723fe537c283b8efa61a30c8",
+  "accent_color": 16711680,
+  "global_name": "Nelly",
+  "avatar_decoration_data": {
+    "sku_id": "1144058844004233369",
+    "asset": "a_fed43ab12698df65902ba06727e20c0e",
+    "expires_at": null
+  },
+  "primary_guild": {
+    "identity_guild_id": "80351110224678913",
+    "identity_enabled": true,
+    "tag": "MEOW",
+    "badge": "7d1734ae5a615e82bc7a4033b98fade8"
+  }
+}
+```
+
+### Avatar Decoration Data Object
+
+A user's active avatar decoration.
+
+###### Avatar Decoration Data Structure
+
+| Field      | Type      | Description                                                  |
+| ---------- | --------- | ------------------------------------------------------------ |
+| asset      | string    | The [avatar decoration hash](/reference#cdn-formatting)      |
+| sku_id     | snowflake | The ID of the avatar decoration's SKU                        |
+| expires_at | ?integer  | Unix timestamp of when the current avatar decoration expires |
+
+###### Example Avatar Decoration Data
+
+```json
+{
+  "sku_id": "1144058844004233369",
+  "asset": "a_fed43ab12698df65902ba06727e20c0e",
+  "expires_at": 1740124800
+}
+```
+
+### Collectibles Object
+
+A user's equipped collectibles, excluding avatar decorations and profile effects.
+
+###### Collectibles Structure
+
+| Field     | Type                                               | Description                                                                                         |
+| --------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| nameplate | [nameplate data](#nameplate-data-structure) object | The user's [nameplate](https://support.discord.com/hc/en-us/articles/30408457944215-Nameplates-FAQ) |
+
+###### Nameplate Data Structure
+
+| Field      | Type      | Description                                               |
+| ---------- | --------- | --------------------------------------------------------- |
+| asset      | string    | The [nameplate asset path](/reference#cdn-formatting)     |
+| sku_id     | snowflake | The ID of the nameplate's SKU                             |
+| label      | string    | The nameplate's accessibility description                 |
+| palette    | string    | The nameplate's [color palette](#nameplate-color-palette) |
+| expires_at | ?integer  | Unix timestamp of when the current nameplate expires      |
+
+###### Nameplate Color Palette
+
+| Value      | Name      |
+| ---------- | --------- |
+| none       | None      |
+| crimson    | Crimson   |
+| berry      | Berry     |
+| sky        | Sky       |
+| teal       | Teal      |
+| forest     | Forest    |
+| bubble_gum | BubbleGum |
+| violet     | Violet    |
+| cobalt     | Cobalt    |
+| clover     | Clover    |
+
+###### Example Collectibles Object
+
+```json
+{
+  "nameplate": {
+    "asset": "nameplates/nameplatetest/angel/",
+    "palette": "bubble_gum",
+    "label": "COLLECTIBLES_NAMEPLATETEST_ANGEL_A11Y",
+    "sku_id": "1344802364934062152",
+    "expires_at": null
+  }
+}
+```
+
+### Profile Metadata Object
+
+A user's profile metadata.
+
+###### Profile Metadata Structure
+
+| Field                           | Type                                                | Description                                                                                               |
+| ------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| guild_id?                       | snowflake                                           | The guild ID this profile applies to, if it is a guild profile                                            |
+| pronouns                        | string                                              | The user's pronouns (max 40 characters)                                                                   |
+| bio?                            | string                                              | The user's bio (max 190 characters)                                                                       |
+| banner?                         | ?string                                             | The user's [banner hash](/reference#cdn-formatting)                                                       |
+| accent_color? ^1^               | ?integer                                            | The user's banner color encoded as an integer representation of a hexadecimal color code                  |
+| theme_colors?                   | ?array[integer, integer]                            | The user's two theme colors encoded as an array of integers representing hexadecimal color codes          |
+| popout_animation_particle_type? | ?snowflake                                          | The user's profile popout animation particle type                                                         |
+| emoji?                          | ?[emoji](/resources/emoji#emoji-object) object      | The user's profile emoji                                                                                  |
+| profile_effect?                 | ?[profile effect](#profile-effect-structure) object | The user's [profile effect](https://support.discord.com/hc/en-us/articles/17828465914263-Profile-Effects) |
+
+^1^ Not respected on guild profiles.
+
+###### Profile Effect Structure
+
+| Field      | Type      | Description                                               |
+| ---------- | --------- | --------------------------------------------------------- |
+| id         | snowflake | The ID of the profile effect                              |
+| expires_at | ?integer  | Unix timestamp of when the current profile effect expires |
+
+###### Example Profile Metadata
+
+```json
+{
+  "guild_id": "80351110224678913",
+  "pronouns": "gnarp/gnap",
+  "bio": "👽 Professional alien",
+  "banner": null,
+  "accent_color": null,
+  "theme_colors": [1, 1],
+  "popout_animation_particle_type": null,
+  "emoji": {
+    "name": "meowlien",
+    "roles": [],
+    "id": "1090395834966880336",
+    "require_colons": true,
+    "managed": false,
+    "animated": false,
+    "available": true
+  },
+  "profile_effect": {
+    "id": "1139323097930027068",
+    "expires_at": 1740124800
+  }
+}
+```
+
+### Authenticator Object
+
+###### Authenticator Structure
+
+| Field | Type   | Description                                      |
+| ----- | ------ | ------------------------------------------------ |
+| id    | string | The ID of the authenticator                      |
+| type  | string | The [type of authenticator](#authenticator-type) |
+| name  | string | The name of the authenticator                    |
+
+###### Authenticator Type
+
+Authenticator types represent enabled multi-factor authentication methods. See the [MFA verification documentation](/authentication#mfa-verification) for more information.
+
+| Value | Name     | Description                       |
+| ----- | -------- | --------------------------------- |
+| 1     | WEBAUTHN | WebAuthn credentials              |
+| 2     | TOTP     | Time-based One-Time Password code |
+| 3     | SMS      | SMS code                          |
+
+###### Example Authenticator
+
+```json
+{
+  "id": "1219430671865610261",
+  "type": 1,
+  "name": "AlienKey"
+}
+```
+
+### Backup Code Object
+
+A multi-factor authentication backup code.
+
+###### Backup Code Structure
+
+| Field    | Type      | Description                           |
+| -------- | --------- | ------------------------------------- |
+| user_id  | snowflake | The ID of the user                    |
+| code     | string    | The backup code                       |
+| consumed | boolean   | Whether the backup code has been used |
+
+###### Example Backup Code
+
+```json
+{
+  "user_id": "852892297661906993",
+  "code": "zqs8oqxk",
+  "consumed": false
+}
+```
+
+### Harvest Object
+
+A user's data harvest.
+
+<Alert type="info">
+
+This object is more verbose than needed as it is used internally by Discord employees to archive user data.
+
+</Alert>
+
+###### Harvest Structure
+
+| Field            | Type                                                   | Description                                                                                           |
+| ---------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| harvest_id       | snowflake                                              | The ID of the harvest                                                                                 |
+| user_id          | snowflake                                              | The ID of the user being harvested                                                                    |
+| email            | string                                                 | The email the harvest will be sent to                                                                 |
+| state            | string                                                 | The [state](#harvest-state) of the harvest                                                            |
+| status           | integer                                                | The [status](#harvest-status) of the harvest                                                          |
+| created_at       | ISO8601 timestamp                                      | When the harvest was created                                                                          |
+| completed_at     | ?ISO8601 timestamp                                     | When the harvest was completed                                                                        |
+| polled_at        | ?ISO8601 timestamp                                     | When the harvest was last polled                                                                      |
+| backends         | map[string, string]                                    | The [state](#harvest-backend-state) of each [backend](#harvest-backend-internal-type) being harvested |
+| updated_at       | ISO8601 timestamp                                      | When the harvest was last updated                                                                     |
+| shadow_run       | boolean                                                | Whether the harvest is a shadow run                                                                   |
+| harvest_metadata | [harvest metadata](#harvest-metadata-structure) object | Additional metadata about the harvest                                                                 |
+
+###### Example Harvest
+
+```json
+{
+  "harvest_id": "1319498748052639754",
+  "user_id": "852892297661906993",
+  "email": "alien@dolfi.es",
+  "state": "DELIVERED",
+  "status": 3,
+  "created_at": "2024-12-20T02:56:56.639579+00:00",
+  "completed_at": "2024-12-21T11:05:41.462828+00:00",
+  "polled_at": "2024-12-21T11:05:41.462828+00:00",
+  "backends": {
+    "ads": "EXTRACTED",
+    "users": "EXTRACTED",
+    "guilds": "EXTRACTED",
+    "hubspot": "EXTRACTED",
+    "messages": "EXTRACTED",
+    "analytics": "EXTRACTED",
+    "activities_e": "EXTRACTED",
+    "activities_w": "EXTRACTED"
+  },
+  "updated_at": "2024-12-21T11:05:41.462828+00:00",
+  "shadow_run": false,
+  "harvest_metadata": {
+    "user_is_staff": false,
+    "sla_email_sent": false,
+    "bypass_cooldown": false,
+    "is_provisional": false
+  }
+}
+```
+
+###### Harvest Metadata Structure
+
+| Field           | Type    | Description                                                                                       |
+| --------------- | ------- | ------------------------------------------------------------------------------------------------- |
+| user_is_staff   | boolean | Whether the user being harvested is a Discord employee                                            |
+| sla_email_sent  | boolean | Whether an email has been sent informing the user that the archive is taking longer than expected |
+| bypass_cooldown | boolean | Whether the harvest bypasses the cooldown period for requesting harvests                          |
+| is_provisional  | boolean | Whether the user being harvested is a provisional account                                         |
+
+###### Harvest State
+
+| Value      | Description                                |
+| ---------- | ------------------------------------------ |
+| INCOMPLETE | The harvest is not yet complete            |
+| DELIVERED  | The harvest has been delivered to the user |
+| CANCELLED  | The harvest has been cancelled             |
+
+###### Harvest Status
+
+| Value | Name      | Description                                    |
+| ----- | --------- | ---------------------------------------------- |
+| 0     | QUEUED    | The harvest is queued and has not been started |
+| 1     | RUNNING   | The harvest is currently running               |
+| 2     | FAILED    | The harvest has failed                         |
+| 3     | COMPLETED | The harvest has completed successfully         |
+| 4     | CANCELLED | The harvest has been cancelled                 |
+
+###### Harvest Backend Internal Type
+
+| Value        | Description                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------- |
+| users        | All account information                                                                                       |
+| analytics    | Actions the user has taken in Discord                                                                         |
+| activities_e | First-party embedded activity information                                                                     |
+| activities_w | First-party embedded activity information                                                                     |
+| messages     | All user messages                                                                                             |
+| hubspot      | Discord's [HubSpot](https://www.hubspot.com/) contact data, used for official Discord programs (e.g. partner) |
+| guilds       | All guilds the user is currently a member of                                                                  |
+| ads          | Quest data                                                                                                    |
+
+###### Harvest Backend State
+
+| Value     | Description                         |
+| --------- | ----------------------------------- |
+| INITIAL   | The backend has not been processed  |
+| RUNNING   | The backend is currently processing |
+| EXTRACTED | The backend has been processed      |
+
+### User Survey Object
+
+A user survey.
+
+###### User Survey Structure
+
+| Field              | Type                      | Description                                                              |
+| ------------------ | ------------------------- | ------------------------------------------------------------------------ |
+| id                 | snowflake                 | The ID of the survey                                                     |
+| key                | snowflake                 | The ID of the survey                                                     |
+| prompt             | string                    | The title of the survey                                                  |
+| cta                | string                    | The call-to-action text                                                  |
+| url                | string                    | The URL to the survey                                                    |
+| guild_requirements | array[string]             | [User requirements](#survey-requirement-type) for the survey to be shown |
+| guild_size         | array[?integer, ?integer] | The guild member count requirements (min, max)                           |
+| guild_permissions  | array[string]             | The [guild permissions bitwise value](/topics/permissions) requirements  |
+
+###### Survey Requirement Type
+
+| Value             | Description                                                                                 | Field               |
+| ----------------- | ------------------------------------------------------------------------------------------- | ------------------- |
+| IS_OWNER          | The user must be the owner of a guild                                                       | -                   |
+| IS_ADMIN          | The user must have the `ADMINISTRATOR` permission in any guild                              | -                   |
+| IS_COMMUNITY      | The user must be in a guild with the [`COMMUNITY` feature](/resources/guild#guild-features) | -                   |
+| GUILD_SIZE        | The user must be in a guild with a member count in a given range                            | `guild_size`        |
+| GUILD_SIZE_ALL    | All guilds the user is in must have a member count in a given range                         | `guild_size`        |
+| IS_HUB            | The user must be in a guild with the [`HUB` feature](/resources/guild#guild-features)       | -                   |
+| IS_VIEWING        | The user must be currently viewing a guild                                                  | -                   |
+| GUILD_PERMISSIONS | The user must have the given permissions in any guild                                       | `guild_permissions` |
+
+###### Example User Survey
+
+```json
+{
+  "id": "1301267751645483122",
+  "key": "1301267751645483122",
+  "prompt": "Share your experience with Discord",
+  "cta": "Take the survey!",
+  "url": "https://discord.sjc1.qualtrics.com/jfe/form/SV_123456",
+  "guild_requirements": [],
+  "guild_size": [null, null],
+  "guild_permissions": []
+}
+```
+
+### Display Name Style Object
+
+How a user's name gets displayed, such as font, colors, gradient, glow.
+
+###### Display Name Style Structure
+
+| Field     | Type           | Description                                                                                    |
+| --------- | -------------- | ---------------------------------------------------------------------------------------------- |
+| font_id   | integer        | The [font](#display-name-font) to use                                                          |
+| effect_id | integer        | The [effect](#display-name-effect) to use                                                      |
+| colors    | array[integer] | The colors to use encoded as an array of integers representing hexadecimal color codes (max 2) |
+
+###### Display Name Font
+
+| Value | Name          | Description                                                          |
+| ----- | ------------- | -------------------------------------------------------------------- |
+| 11    | DEFAULT       | Default font                                                         |
+| 1     | BANGERS       | [Bangers](https://fonts.google.com/specimen/Bangers)                 |
+| 2     | BIO_RHYME     | [BioRhyme](https://fonts.google.com/specimen/BioRhyme)               |
+| 3     | CHERRY_BOMB   | [Cherry Bomb One](https://fonts.google.com/specimen/Cherry+Bomb+One) |
+| 4     | CHICLE        | [Chicle](https://fonts.google.com/specimen/Chicle)                   |
+| 5     | COMPAGNON     | [Compagnon](https://velvetyne.fr/fonts/compagnon/)                   |
+| 6     | MUSEO_MODERNO | [MuseoModerno](https://fonts.google.com/specimen/MuseoModerno)       |
+| 7     | NEO_CASTEL    | [Néo-Castel](https://maxlilllo.gumroad.com/l/neo-castel)             |
+| 8     | PIXELIFY      | [Pixelify Sans](https://fonts.google.com/specimen/Pixelify+Sans)     |
+| 9     | RIBES         | [Ribes](https://www.collletttivo.it/typefaces/ribes)                 |
+| 10    | SINISTRE      | [Sinistre](https://www.collletttivo.it/typefaces/sinistre)           |
+
+###### Display Name Effect
+
+| Value | Name     | Description                         |
+| ----- | -------- | ----------------------------------- |
+| 1     | SOLID    | Displays the first color provided   |
+| 2     | GRADIENT | Two color gradient                  |
+| 3     | NEON     | Glow around the name                |
+| 4     | TOON     | Subtle vertical gradient and stroke |
+| 5     | POP      | Colored dropshadow                  |
+
+## Endpoints
+
+<RouteHeader method="GET" url="/users/@me" supportsOAuth2="identify">
+  Get Current User
+</RouteHeader>
+
+Returns the [user](#user-object) object of the requester's account.
+
+<RouteHeader method="PATCH" url="/users/@me" mfa>
+  Modify Current User
+</RouteHeader>
+
+Modifies the requester's user account settings. Returns a [user](#user-object) object with an extra `token` field representing the user's new authorization token on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+<Alert type="warn">
+
+At least one active Gateway session is required to modify a user account's username.
+
+</Alert>
+
+###### JSON Params
+
+| Field                     | Type                               | Description                                                                                                                                                               |
+| ------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| username? ^5^             | string                             | The user's username (2-32 characters)                                                                                                                                     |
+| discriminator? ^5^        | string                             | The user's stringified 4-digit Discord tag; can only be changed for users with an applicable premium (Nitro) plan, which triggers a reroll after the subscription expires |
+| global_name? ^5^          | ?string                            | The user's display name (1-32 characters)                                                                                                                                 |
+| avatar?                   | ?[image data](/reference#cdn-data) | The user's avatar; can be animated when the user has an applicable premium (Nitro) plan                                                                                   |
+| avatar_description?       | ?string                            | The description of the new user avatar, usually in the format "{filename}, added {date}" (max 1024 characters)                                                            |
+| avatar_id?                | string                             | The ID of the recent avatar to use                                                                                                                                        |
+| avatar_decoration_id?     | ?snowflake                         | The ID of the user's avatar decoration                                                                                                                                    |
+| avatar_decoration_sku_id? | ?snowflake                         | The SKU ID of the user's avatar decoration                                                                                                                                |
+| email?                    | string                             | The user's email address; if changing from a verified email, `email_token` must be provided                                                                               |
+| email_token? ^4^          | string                             | The user's email token from their previous email                                                                                                                          |
+| pronouns?                 | ?string                            | The user's pronouns (max 40 characters)                                                                                                                                   |
+| bio?                      | ?string                            | The user's bio (max 190 characters)                                                                                                                                       |
+| banner?                   | ?[image data](/reference#cdn-data) | The user's banner; can only be changed for premium (Nitro) users                                                                                                          |
+| accent_color?             | ?integer                           | The user's banner color encoded as an integer representation of a hexadecimal color code                                                                                  |
+| flags?                    | integer                            | The user's [flags](#user-flags) (only `PREMIUM_PROMO_DISMISSED` and `HAS_UNREAD_URGENT_MESSAGES` can be set)                                                              |
+| date_of_birth? ^2^        | ISO8601 timestamp                  | The user's date of birth; can only be set once                                                                                                                            |
+| password? ^1^             | string                             | The user's current password; if the account does not have a password, this sets it                                                                                        |
+| new_password? ^3^         | string                             | The user's new password (8-72 characters)                                                                                                                                 |
+| push_provider             | string                             | The [push notification provider](/topics/push-notifications#push-notification-provider) of the device                                                                     |
+| push_token                | string                             | The push notification token to register                                                                                                                                   |
+| push_voip_provider? ^6^   | string                             | The VOIP [push notification provider](/topics/push-notifications#push-notification-provider) of the device                                                                |
+| push_voip_token? ^6^      | string                             | The VOIP push notification token to register                                                                                                                              |
+
+^1^ Required for changing `username`, `discriminator`, `email`, `date_of_birth`, or `new_password`.
+
+^2^ Setting this defines the `nsfw_allowed` field of the user based on whether they are over 18.
+
+^3^ Changing the account password invalidates all active tokens. Don't fret though, as the `token` key in the response will be valid.
+
+^4^ This value can be obtained by requesting a verification code as outlined in the [email verification documentation](/topics/email-verification#changing-your-email-address).
+
+^5^ If using unique usernames, the `username` field must be unique across Discord, and `discriminator` cannot be changed. Else, the `username` and `discriminator` fields must be unique across Discord, and changing the username may cause the discriminator to be randomized. See the [section on Discord's new username system](#unique-usernames) for more information. See the [Usernames and Nicknames section](#usernames-and-nicknames) for information on username restrictions.
+
+^6^ VOIP-specific push notification tokens are only used with PushKit on iOS.
+
+<RouteHeader method="PATCH" url="/users/@me/account" supportsOAuth2="account.global_name.update">
+  Modify Current User Account
+</RouteHeader>
+
+Modifies the requester's user account settings. Returns a partial [user](#user-object) object on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+<Alert type="warn">
+
+This endpoint is only usable with an OAuth2 access token with the `account.global_name.update` scope.
+
+</Alert>
+
+###### JSON Params
+
+| Field        | Type    | Description                               |
+| ------------ | ------- | ----------------------------------------- |
+| global_name? | ?string | The user's display name (1-32 characters) |
+
+<RouteHeader method="GET" url="/users/@me/avatars">
+  Get Recent Avatars
+</RouteHeader>
+
+Returns the user's recent avatars. For premium users, the six most recent avatars will be returned. Otherwise, only two will be returned.
+
+###### Response Body
+
+| Field   | Type                                      | Description                     |
+| ------- | ----------------------------------------- | ------------------------------- |
+| avatars | array[[avatar](#avatar-structure) object] | The recent avatars for the user |
+
+###### Avatar Structure
+
+| Field        | Type    | Description                                            |
+| ------------ | ------- | ------------------------------------------------------ |
+| id           | string  | The avatar ID                                          |
+| storage_hash | string  | The [avatar hash](/reference#cdn-formatting)           |
+| description  | ?string | The description specified when the avatar was uploaded |
+
+###### Example Response
+
+```json
+{
+  "avatars": [
+    {
+      "id": "1357011390585507910",
+      "storage_hash": "212aed0ac14cf7804051218f99624a9f",
+      "description": "alien, added April 2, 2025 at 5:09 PM"
+    }
+  ]
+}
+```
+
+<RouteHeader method="DELETE" url="/users/@me/avatars/{avatar.id}">
+  Delete Recent Avatar
+</RouteHeader>
+
+Deletes a recent avatar for the user. Returns a 204 empty response on success.
+
+<RouteHeader method="GET" url="/users/{user.id}">
+  Get User
+</RouteHeader>
+
+Returns a partial [user](#user-object) object for a given user ID.
+
+<RouteHeader method="GET" url="/users/{user.id}/profile">
+  Get User Profile
+</RouteHeader>
+
+Returns a user profile object for a given user ID.
+
+<Alert type="warn">
+
+This endpoint requires one of the following:
+
+- The user is a bot
+- The user shares a mutual guild with the current user
+- The user is a friend of the current user
+- The user is a friend suggestion of the current user
+- The user has an outgoing friend request to the current user
+- A valid [`join_request_id`](/resources/guild#guild-join-request-object) is provided
+
+</Alert>
+
+###### Query String Params
+
+| Field                      | Type      | Description                                                                                        |
+| -------------------------- | --------- | -------------------------------------------------------------------------------------------------- |
+| with_mutual_guilds?        | boolean   | Whether to include the mutual guilds of the user with the current user (default true)              |
+| with_mutual_friends?       | boolean   | Whether to include mutual friends the user has with the current user (default false)               |
+| with_mutual_friends_count? | boolean   | Whether to include the number of mutual friends the user has with the current user (default false) |
+| guild_id?                  | snowflake | The guild ID to get the user's member profile in                                                   |
+| connections_role_id?       | snowflake | The role ID to get the user's application role connection metadata in                              |
+| join_request_id?           | snowflake | The join request ID to use for the request                                                         |
+
+###### Response Body
+
+| Field                         | Type                                                                                                   | Description                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| application?                  | [profile application](#profile-application-structure) object                                           | The bot's application profile                                                                |
+| user                          | partial [user](#user-object) object                                                                    | The user object, with an extra `bio` key denoting the user's bio                             |
+| user_profile ^1^              | [profile metadata](#profile-metadata-object) object                                                    | The user's profile metadata                                                                  |
+| badges ^1^                    | array[[profile badge](#profile-badge-structure) object]                                                | The user's profile badges                                                                    |
+| guild_member? ^1^             | [guild member](/resources/guild#guild-member-object) object                                            | The guild member in the guild specified, with an extra `bio` denoting the guild member's bio |
+| guild_member_profile? ^1^     | [profile metadata](#profile-metadata-object) object                                                    | The guild member's profile in the guild specified                                            |
+| guild_badges ^1^              | array[[profile badge](#profile-badge-structure) objcet]                                                | The guild member's guild-specific profile badges                                             |
+| legacy_username? ^1^ ^2^      | ?string                                                                                                | The user's pre-migration `username#discriminator`, if applicable and shown                   |
+| mutual_guilds? ^1^            | array[[mutual guild](#mutual-guild-structure) object]                                                  | The mutual guilds of the user with the current user                                          |
+| mutual_friends? ^1^ ^3^       | array[partial [user](#user-object) object]                                                             | The mutual friends the user has with the current user                                        |
+| mutual_friends_count? ^1^ ^3^ | integer                                                                                                | The number of mutual friends the user has with the current user                              |
+| connected_accounts            | array[partial [connection](/resources/connected-accounts#connection-object) object]                    | The user's public connected accounts                                                         |
+| application_role_connections? | array[[application role connection](/resources/application#application-role-connection-object) object] | The user's application role connections for the role specified                               |
+| premium_type ^1^              | ?integer                                                                                               | The [type of premium (Nitro) subscription](#premium-type) on a user's account                |
+| premium_since ^1^             | ?ISO8601 timestamp                                                                                     | The date the user's premium (Nitro) subscription started                                     |
+| premium_guild_since ^1^       | ?ISO8601 timestamp                                                                                     | The date the user's premium guild (boosting) subscription started                            |
+
+^1^ These fields are unexpectedly missing or `null` if the user has blocked the current user.
+
+^2^ See the [section on Discord's new username system](#unique-usernames) for more information.
+
+^3^ This will always be an empty list / zero value for bots, even if the user has mutual friends with it.
+
+###### Profile Application Structure
+
+| Field                            | Type                                                                                                                                            | Description                                                                                                                     |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| id                               | snowflake                                                                                                                                       | The ID of the application                                                                                                       |
+| flags                            | integer                                                                                                                                         | The [application's flags](/resources/application#application-flags)                                                             |
+| verified                         | boolean                                                                                                                                         | Whether the application is verified                                                                                             |
+| storefront_available             | boolean                                                                                                                                         | Whether the application has monetization enabled (i.e. subscriptions or products available for purchase)                        |
+| primary_sku_id?                  | snowflake                                                                                                                                       | The ID of the application's primary SKU (game, application subscription, etc.)                                                  |
+| install_params?                  | [application install params](/resources/application#application-install-params-object) object                                                   | The default in-app authorization link for the integration                                                                       |
+| integration_types_config?        | map[integer, ?[application integration type configuration](/resources/application#application-integration-type-configuration-structure) object] | The configuration for each [integration type](/resources/application#application-integration-type) supported by the application |
+| popular_application_command_ids? | array[snowflake]                                                                                                                                | The IDs of the application's most popular application commands (max 5)                                                          |
+| custom_install_url?              | string                                                                                                                                          | The default custom authorization link for the integration                                                                       |
+
+###### Profile Badge Structure
+
+For a list of known profile badges, refer to [this Gist](https://gist.github.com/XYZenix/c45156b7c883b5301c9028e39d71b479).
+
+| Field       | Type   | Description                                        |
+| ----------- | ------ | -------------------------------------------------- |
+| id          | string | The reference ID of the badge                      |
+| description | string | A description of the badge                         |
+| icon        | string | The badge's [icon hash](/reference#cdn-formatting) |
+| link?       | string | A link representing the badge                      |
+
+###### Mutual Guild Structure
+
+| Field | Type      | Description                      |
+| ----- | --------- | -------------------------------- |
+| id    | snowflake | The guild ID                     |
+| nick  | ?string   | The user's nickname in the guild |
+
+###### Example Response
+
+```json
+{
+  "user": {
+    "id": "852892297661906993",
+    "username": "alien",
+    "global_name": "Alien",
+    "avatar": "9d52298a3ad006da31ac66a86230d9f2",
+    "avatar_decoration_data": null,
+    "discriminator": "0",
+    "public_flags": 64,
+    "flags": 64,
+    "banner": "a_17a0757cf6121ccc07546de9bff3edb2",
+    "accent_color": null,
+    "bio": "👽 Professional smoothbrain",
+    "avatar_decoration_data": null,
+    "primary_guild": null
+  },
+  "connected_accounts": [
+    {
+      "type": "twitter",
+      "id": "123456",
+      "name": "discord",
+      "verified": true,
+      "metadata": {
+        "verified": "1",
+        "followers_count": "100000",
+        "statuses_count": "100000",
+        "created_at": "2016-01-01T00:00:00"
+      }
+    }
+  ],
+  "premium_since": "2016-01-01T00:00:00.00+00:00",
+  "premium_type": 2,
+  "premium_guild_since": "2016-01-01T00:00:00.00+00:00",
+  "mutual_friends_count": 100,
+  "mutual_guilds": [
+    {
+      "id": "80351110224678913",
+      "nick": "Liena"
+    }
+  ],
+  "guild_member": {
+    "avatar": null,
+    "communication_disabled_until": null,
+    "unusual_dm_activity_until": null,
+    "flags": 0,
+    "joined_at": "2016-01-01T00:00:00.00+00:00",
+    "nick": null,
+    "pending": false,
+    "premium_since": "2016-01-01T00:00:00.00+00:00",
+    "roles": [],
+    "user": {
+      "id": "852892297661906993",
+      "username": "alien",
+      "global_name": "Alien",
+      "avatar": "9d52298a3ad006da31ac66a86230d9f2",
+      "discriminator": "0",
+      "public_flags": 4194368,
+      "avatar_decoration_data": null,
+      "primary_guild": null
+    },
+    "bio": "👽 Professional alien",
+    "banner": null,
+    "mute": false,
+    "deaf": false
+  },
+  "application_role_connections": [
+    {
+      "platform_name": "Aliens United",
+      "platform_username": "Alien",
+      "metadata": {
+        "real": "1",
+        "certified": "1"
+      },
+      "application": {
+        "id": "891436233903964161",
+        "name": "Lightbulb",
+        "icon": "4d47160ec8c45f22e2bdbe75ac3e1bbd",
+        "description": "<:support_icon:853084466016288828> Imagine a bot.",
+        "summary": "",
+        "type": null,
+        "bot": {
+          "id": "891436233903964161",
+          "username": "lightbulb",
+          "global_name": "Lightbulb",
+          "avatar": "59fb354bf144ed784aa8bdef88d135bb",
+          "avatar_decoration_data": null,
+          "discriminator": "0",
+          "public_flags": 0,
+          "bot": true
+        }
+      },
+      "application_metadata": {
+        "real": {
+          "type": 7,
+          "key": "real",
+          "name": "Real",
+          "description": "Are you real alier?"
+        },
+        "certified": {
+          "type": 7,
+          "key": "certified",
+          "name": "Certified",
+          "description": "Are you certified alier?"
+        }
+      }
+    }
+  ],
+  "user_profile": {
+    "bio": "👽 Professional smoothbrain",
+    "accent_color": null,
+    "pronouns": "gnarp/gnap",
+    "banner": "a_17a0757cf6121ccc07546de9bff3edb2",
+    "theme_colors": [1, 1],
+    "popout_animation_particle_type": 100000,
+    "emoji": null,
+    "profile_effect": {
+      "id": "1139323097930027068",
+      "expires_at": null
+    }
+  },
+  "guild_member_profile": {
+    "guild_id": "80351110224678913",
+    "pronouns": "",
+    "bio": "👽 Professional alien",
+    "banner": null,
+    "accent_color": null,
+    "theme_colors": [1, 1],
+    "popout_animation_particle_type": null,
+    "emoji": null,
+    "profile_effect": {
+      "id": "1139323097930027068",
+      "expires_at": null
+    }
+  }
+}
+```
+
+<RouteHeader method="PATCH" url="/users/@me/profile">
+  Modify User Profile
+</RouteHeader>
+
+Modifies the current user's profile. Returns the updated [profile metadata](#profile-metadata-object) object on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+###### JSON Params
+
+| Field                           | Type                               | Description                                                                                      |
+| ------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| pronouns?                       | ?string                            | The user's pronouns (max 40 characters)                                                          |
+| bio?                            | ?string                            | The user's bio (max 190 characters)                                                              |
+| banner?                         | ?[image data](/reference#cdn-data) | The user's banner; can only be changed for premium (Nitro) users                                 |
+| accent_color?                   | ?integer                           | The user's banner color encoded as an integer representation of a hexadecimal color code         |
+| theme_colors?                   | ?array[integer, integer]           | The user's two theme colors encoded as an array of integers representing hexadecimal color codes |
+| popout_animation_particle_type? | ?snowflake                         | The user's profile popout animation particle type                                                |
+| emoji_id?                       | ?snowflake                         | The user's profile emoji ID                                                                      |
+| profile_effect_id?              | ?snowflake                         | The user's profile effect ID                                                                     |
+
+<RouteHeader method="GET" url="/users/{user.id}/relationships">
+  Get Mutual Relationships
+</RouteHeader>
+
+Returns a list of partial [user](#user-object) objects that are friends with the user and current user.
+
+<Alert type="info">
+
+This endpoint will always return an empty list for bots, even if the user has mutual friends with it.
+
+</Alert>
+
+<RouteHeader method="POST" url="/users/@me/mfa/totp/enable">
+  Enable TOTP MFA
+</RouteHeader>
+
+Enables TOTP multi-factor authentication for the current user. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+<Alert type="info">
+
+The `secret` and `code` fields are optional as this endpoint is intended to be used to validate the user's password first before prompting the user to save the secret.
+If the password is valid, the request will fail with a [`60005` JSON error code](/topics/opcodes-and-status-codes#json-error-codes), prompting the client to continue with the setup flow.
+
+</Alert>
+
+###### JSON Params
+
+| Field    | Type   | Description                                       |
+| -------- | ------ | ------------------------------------------------- |
+| password | string | The user's password                               |
+| secret?  | string | The generated TOTP secret (32 characters)         |
+| code?    | string | The TOTP code to verify the secret (6 characters) |
+
+###### Response Body
+
+| Field        | Type                                             | Description                                 |
+| ------------ | ------------------------------------------------ | ------------------------------------------- |
+| token        | string                                           | The new authorization token for the session |
+| backup_codes | array[[backup code](#backup-code-object) object] | MFA backup codes                            |
+
+<RouteHeader method="POST" url="/users/@me/mfa/totp/disable" mfa>
+  Disable TOTP MFA
+</RouteHeader>
+
+Disables TOTP multi-factor authentication for the current user. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+<Alert type="warn">
+
+MFA cannot be disabled for administrators of guilds with published creator monetization listings.
+
+</Alert>
+
+###### Response Body
+
+| Field | Type   | Description                                 |
+| ----- | ------ | ------------------------------------------- |
+| token | string | The new authorization token for the session |
+
+<RouteHeader method="POST" url="/users/@me/mfa/sms/enable" mfa>
+  Enable SMS MFA
+</RouteHeader>
+
+Enables SMS multi-factor authentication for the current user. Requires that TOTP-based MFA is already enabled and the user has a verified phone number. Returns a 204 empty response on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+###### JSON Params
+
+| Field    | Type   | Description         |
+| -------- | ------ | ------------------- |
+| password | string | The user's password |
+
+<RouteHeader method="POST" url="/users/@me/mfa/sms/disable" mfa>
+  Disable SMS MFA
+</RouteHeader>
+
+Disables SMS multi-factor authentication for the current user. Returns a 204 empty response on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+###### JSON Params
+
+| Field    | Type   | Description         |
+| -------- | ------ | ------------------- |
+| password | string | The user's password |
+
+<RouteHeader method="GET" url="/users/@me/mfa/webauthn/credentials">
+  Get WebAuthn Authenticators
+</RouteHeader>
+
+Returns a list of [WebAuthn authenticator](#authenticator-object) objects for the current user.
+
+<RouteHeader method="POST" url="/users/@me/mfa/webauthn/credentials" mfa>
+  Create WebAuthn Authenticator
+</RouteHeader>
+
+Creates a WebAuthn authenticator for the current user. Fires [User Update](/topics/gateway-events#user-update) and [Authenticator Create](/topics/gateway-events#authenticator-create) Gateway events once the authenticator is created.
+
+<Alert type="info">
+
+All parameters to this endpoint are optional as the intended flow is to first use it to generate a `ticket` and `challenge` that is then used to create the authenticator.
+
+</Alert>
+
+###### JSON Params
+
+| Field       | Type   | Description                                                                                                                                    |
+| ----------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| name?       | string | The name of the authenticator (1-32 characters)                                                                                                |
+| ticket?     | string | The MFA ticket returned from the same endpoint                                                                                                 |
+| credential? | string | A stringified JSON object of the [public key credential response](https://developer.mozilla.org/en-US/docs/Web/API/PublicKeyCredential/toJSON) |
+
+###### Response Body
+
+| Field            | Type                                             | Description                                                                                                                                                              |
+| ---------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ticket ^1^       | string                                           | The MFA ticket                                                                                                                                                           |
+| challenge ^1^    | string                                           | The stringified JSON [public key credential request options](https://developer.mozilla.org/en-US/docs/Web/API/CredentialsContainer/get#web_authentication_api) challenge |
+| id ^2^           | string                                           | The ID of the authenticator                                                                                                                                              |
+| type ^2^         | string                                           | The [type of authenticator](#authenticator-type) (always `WEBAUTHN`)                                                                                                     |
+| name ^2^         | string                                           | The name of the authenticator                                                                                                                                            |
+| backup_codes ^2^ | array[[backup code](#backup-code-object) object] | MFA backup codes                                                                                                                                                         |
+
+^1^ Only returned when no parameters are provided.
+
+^2^ Only returned when parameters are provided.
+
+###### Example Response (Ticket)
+
+```json
+{
+  "ticket": "ODUyODkyMjk3NjYxOTA2OTkz.H2Rpq0.WrhGhYEhM3lHUPN61xF6JcQKwVutk8fBvcoHjo",
+  "challenge": "{\"publicKey\":{\"challenge\":\"a8a1cHP7_zYheggFG68zKUkl8DwnEqfKvPE-GOMvhss\",\"timeout\":60000,\"rpId\":\"discord.com\",\"allowCredentials\":[{\"type\":\"public-key\",\"id\":\"izrvF80ogrfg9dC3RmWWwW1VxBVBG0TzJVXKOJl__6FvMa555dH4Trt2Ub8AdHxNLkQsc0unAGcn4-hrJHDKSO\"}],\"userVerification\":\"preferred\"}}"
+}
+```
+
+###### Example Response (Authenticator)
+
+```json
+{
+  "id": "1219430671865610261",
+  "type": 1,
+  "name": "AlienKey",
+  "backup_codes": [
+    {
+      "user_id": "852892297661906993",
+      "code": "zqs8oqxk",
+      "consumed": false
+    }
+  ]
+}
+```
+
+<RouteHeader method="PATCH" url="/users/@me/mfa/webauthn/credentials/{authenticator.id}" mfa>
+  Modify WebAuthn Authenticator
+</RouteHeader>
+
+Modifies the given WebAuthn authenticator. Returns the updated [authenticator](#authenticator-object) object on success. Fires an [Authenticator Update](/topics/gateway-events#authenticator-update) Gateway event.
+
+###### JSON Params
+
+| Field | Type   | Description                                     |
+| ----- | ------ | ----------------------------------------------- |
+| name? | string | The name of the authenticator (1-32 characters) |
+
+<RouteHeader method="DELETE" url="/users/@me/mfa/webauthn/credentials/{authenticator.id}" mfa>
+  Delete WebAuthn Authenticator
+</RouteHeader>
+
+Deletes the given WebAuthn authenticator. Returns a 204 empty response on success. Fires [User Update](/topics/gateway-events#user-update) and [Authenticator Delete](/topics/gateway-events#authenticator-delete) Gateway events.
+
+<Alert type="warn">
+
+If this is the last remaining authenticator, this disables MFA for the current user. MFA cannot be disabled for administrators of guilds with published creator monetization listings.
+
+</Alert>
+
+<RouteHeader method="POST" url="/auth/verify/view-backup-codes-challenge">
+  Send Backup Codes Challenge
+</RouteHeader>
+
+Sends an email to the current user with a verification code that allows them to view their backup codes. Returns a 204 empty response on success.
+
+<Alert type="info">
+
+Each generated nonce can only be used once and expires after 30 minutes.
+
+</Alert>
+
+###### JSON Params
+
+| Field    | Type   | Description         |
+| -------- | ------ | ------------------- |
+| password | string | The user's password |
+
+###### Response Body
+
+| Field            | Type   | Description                                                         |
+| ---------------- | ------ | ------------------------------------------------------------------- |
+| nonce            | string | The one-time verification nonce used to view the backup codes       |
+| regenerate_nonce | string | The one-time verification nonce used to regenerate the backup codes |
+
+<RouteHeader method="POST" url="/users/@me/mfa/codes-verification">
+  Get Backup Codes
+</RouteHeader>
+
+Returns the user's MFA backup codes.
+
+###### JSON Params
+
+| Field          | Type    | Description                                                              |
+| -------------- | ------- | ------------------------------------------------------------------------ |
+| key ^1^        | string  | The backup code verification key received in the email                   |
+| nonce ^1^ ^2^  | string  | The one-time verification nonce used to view/regenerate the backup codes |
+| regenerate ^2^ | boolean | Whether to regenerate the backup codes                                   |
+
+^1^ This value can be obtained by requesting a verification code with the [Send Backup Codes Challenge](#send-backup-codes-challenge) endpoint.
+
+^2^ The nonce used must correspond to the action being performed. Each action can only be performed once.
+
+###### Response Body
+
+| Field        | Type                                             | Description      |
+| ------------ | ------------------------------------------------ | ---------------- |
+| backup_codes | array[[backup code](#backup-code-object) object] | MFA backup codes |
+
+###### Example Response
+
+```json
+{
+  "backup_codes": [
+    {
+      "user_id": "852892297661906993",
+      "code": "zqs8oqxk",
+      "consumed": false
+    }
+  ]
+}
+```
+
+<RouteHeader method="POST" url="/users/@me/disable" mfa>
+  Disable User Account
+</RouteHeader>
+
+Disables the current user's account. Invalidates all active tokens. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field    | Type   | Description         |
+| -------- | ------ | ------------------- |
+| password | string | The user's password |
+
+<RouteHeader method="POST" url="/users/@me/delete" mfa>
+  Delete User Account
+</RouteHeader>
+
+Marks the current user's account for deletion. Invalidates all active tokens. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field    | Type    | Description                 |
+| -------- | ------- | --------------------------- |
+| password | ?string | The user's password, if any |
+
+<RouteHeader method="POST" url="/users/@me/captcha/verify" deprecated>
+  Verify User Captcha
+</RouteHeader>
+
+Verifies a reCAPTCHA solution when needed by the [`REQUIRE_CAPTCHA` required action](#required-action-type). Returns a 204 empty response on success. Fires a [User Required Action Update](/topics/gateway-events#user-required-action-update) Gateway event.
+
+###### reCAPTCHA Site Key
+
+```
+6Lef5iQTAAAAAKeIvIY-DeexoO3gj7ryl9rLMEnn
+```
+
+###### JSON Params
+
+| Field       | Type   | Description            |
+| ----------- | ------ | ---------------------- |
+| captcha_key | string | The reCAPTCHA solution |
+
+<RouteHeader method="patch" url="/users/@me/agreements">
+  Modify User Agreements
+</RouteHeader>
+
+Reaffirms the user's agreements to Discord's [Terms of Service](https://discord.com/terms) and [Privacy Policy](https://discord.com/privacy) when needed by the [`AGREEMENTS` required action](#required-action-type), which is assigned when a policy change occurs.
+Returns a 204 empty response on success. Fires a [User Required Action Update](/topics/gateway-events#user-required-action-update) Gateway event.
+
+###### JSON Params
+
+| Field    | Type    | Description                                     |
+| -------- | ------- | ----------------------------------------------- |
+| terms?   | boolean | Whether the user agrees to the Terms of Service |
+| privacy? | boolean | Whether the user agrees to the Privacy Policy   |
+
+<RouteHeader method="GET" url="/users/@me/pomelo-suggestions" deprecated>
+  Get Unique Username Suggestions
+</RouteHeader>
+
+Returns a suggested unique username string based on the current user's username.
+
+<Alert type="warn">
+
+This endpoint is used during the pomelo migration flow. The user must be in the rollout to use this endpoint. See the [section on Discord's new username system](#unique-usernames) for more information.
+
+</Alert>
+
+###### Response Body
+
+| Field    | Type   | Description            |
+| -------- | ------ | ---------------------- |
+| username | string | The suggested username |
+
+###### Example Response
+
+```json
+{ "username": "gnarp.gnap" }
+```
+
+<RouteHeader method="POST" url="/users/@me/pomelo-attempt">
+  Get Unique Username Eligibility
+</RouteHeader>
+
+Checks whether a unique username is available for the user to claim.
+
+<Alert type="info">
+
+See the [Usernames and Nicknames section](/resources/user#usernames-and-nicknames) for more information on username restrictions.
+
+</Alert>
+
+###### JSON Params
+
+| Field    | Type   | Description           |
+| -------- | ------ | --------------------- |
+| username | string | The username to check |
+
+###### Response Body
+
+| Field | Type     | Description                   |
+| ----- | -------- | ----------------------------- |
+| taken | ?boolean | Whether the username is taken |
+
+###### Example Response
+
+```json
+{ "taken": true }
+```
+
+<RouteHeader method="POST" url="/users/@me/pomelo" deprecated>
+  Create Unique Username
+</RouteHeader>
+
+Claims a unique username for the user. Returns the updated [user](#user-object) object on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+<Alert type="warn">
+
+This endpoint is used during the pomelo migration flow. The user must be in the rollout to use this endpoint. See the [section on Discord's new username system](#unique-usernames) for more information.
+
+</Alert>
+
+###### JSON Params
+
+| Field    | Type   | Description           |
+| -------- | ------ | --------------------- |
+| username | string | The username to claim |
+
+<RouteHeader method="PUT" url="/users/@me/clan">
+  Set Guild Identity
+</RouteHeader>
+
+Sets the current user's primary guild. Returns a [user](#user-object) object on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+###### JSON Params
+
+| Field              | Type       | Description                                         |
+| ------------------ | ---------- | --------------------------------------------------- |
+| identity_enabled?  | ?boolean   | Whether the user has enabled the feature            |
+| identity_guild_id? | ?snowflake | The ID of the guild whose identity is being adopted |
+
+<RouteHeader method="GET" url="/users/@me/mentions">
+  Get Recent Mentions
+</RouteHeader>
+
+Returns a list of [message](/resources/message#message-object) objects that the current user has been mentioned in during the past 7 days.
+
+###### Query String Params
+
+| Field     | Type      | Description                                                    |
+| --------- | --------- | -------------------------------------------------------------- |
+| before?   | snowflake | Get messages before this message ID                            |
+| limit?    | integer   | Max number of messages to return (1-100, default 25)           |
+| guild_id? | snowflake | The guild to limit returned messages by                        |
+| roles?    | boolean   | Whether to include role mentions (default true)                |
+| everyone? | boolean   | Whether to include @everyone and @here mentions (default true) |
+
+<RouteHeader method="DELETE" url="/users/@me/mentions/{message.id}">
+  Delete Recent Mention
+</RouteHeader>
+
+Acknowledges a message the current user has been mentioned in. Returns a 204 empty response on success. Fires a [Recent Mention Delete](/topics/gateway-events#recent-mention-delete) Gateway event.
+
+<RouteHeader method="GET" url="/users/@me/harvest" supportsOAuth2>
+  Get User Harvest
+</RouteHeader>
+
+<Alert type="info">
+
+In an OAuth2 context, only provisional accounts are supported.
+
+</Alert>
+
+If it exists, returns a [harvest](#harvest-object) object representing the current user's most recent user data harvest request. Otherwise, returns a 204 empty response.
+
+<RouteHeader method="POST" url="/users/@me/harvest" supportsOAuth2>
+  Create User Harvest
+</RouteHeader>
+
+<Alert type="info">
+
+In an OAuth2 context, only provisional accounts are supported.
+
+</Alert>
+
+Creates a user data harvest request for the current user. Returns a [harvest](#harvest-object) object on success.
+
+###### JSON Params
+
+| Field     | Type           | Description                                |
+| --------- | -------------- | ------------------------------------------ |
+| backends? | ?array[string] | The types of user data being requested ^1^ |
+| email ^2^ | string         | The email address to send the harvest to   |
+
+^1^ Invalid options are ignored. If the array contains no valid values, all data types are requested.
+
+^2^ Only applicable in OAuth2 contexts.
+
+###### Harvest Backend Type
+
+See [the official support page](https://support.discord.com/hc/en-us/articles/360004957991) for more information.
+
+| Value      | Description                                  |
+| ---------- | -------------------------------------------- |
+| Accounts   | All account information                      |
+| Ads        | Quest data                                   |
+| Analytics  | Actions the user has taken in Discord        |
+| Activities | First-party embedded activity information    |
+| Messages   | All user messages                            |
+| Programs   | Official Discord programs (e.g. partner)     |
+| Servers    | All guilds the user is currently a member of |
+
+<RouteHeader method="GET" url="/users/@me/survey">
+  Get User Survey
+</RouteHeader>
+
+Returns the current user's active survey.
+
+<Alert type="info">
+
+The active survey should be cached and refetched at most once per day.
+
+</Alert>
+
+###### Query String Params
+
+| Field                | Type      | Description                                                                 |
+| -------------------- | --------- | --------------------------------------------------------------------------- |
+| disable_auto_seen?   | boolean   | Whether to prevent automatically marking the survey as seen (default false) |
+| survey_override? ^1^ | snowflake | The ID of the survey to return                                              |
+
+^1^ Only usable by Discord employees.
+
+###### Response Body
+
+| Field  | Type                                       | Description                      |
+| ------ | ------------------------------------------ | -------------------------------- |
+| survey | ?[user survey](#user-survey-object) object | The user's active survey, if any |
+
+<RouteHeader method="POST" url="/users/@me/survey/{survey.id}/seen">
+  Acknowledge User Survey
+</RouteHeader>
+
+Marks a user survey as seen. Returns a 204 empty response on success.
+
+<Alert type="info">
+
+When a survey is marked as seen, it will not be shown to the user again.
+
+</Alert>
+
+<RouteHeader method="GET" url="/users/@me/notes">
+  Get User Notes
+</RouteHeader>
+
+Returns a mapping of user IDs to notes for the current user.
+
+###### Example Response
+
+```json
+{
+  "852892297661906993": "This is a note",
+  "787017887877169173": "This is another note"
+}
+```
+
+<RouteHeader method="GET" url="/users/@me/notes/{user.id}">
+  Get User Note
+</RouteHeader>
+
+Returns the note for the given user.
+
+###### Response Body
+
+| Field        | Type      | Description                                                       |
+| ------------ | --------- | ----------------------------------------------------------------- |
+| note         | string    | The note (max 256 characters)                                     |
+| note_user_id | snowflake | The ID of the user the note is on                                 |
+| user_id      | snowflake | The ID of the user who created the note (always the current user) |
+
+###### Example Response
+
+```json
+{
+  "note": "This is a note",
+  "note_user_id": "787017887877169173",
+  "user_id": "852892297661906993"
+}
+```
+
+<RouteHeader method="PUT" url="/users/@me/notes/{user.id}">
+  Modify User Note
+</RouteHeader>
+
+Sets the note for the given user. Returns a 204 empty response on success. Fires a [User Note Update](/topics/gateway-events#user-note-update) Gateway event.
+
+###### JSON Params
+
+| Field | Type    | Description                   |
+| ----- | ------- | ----------------------------- |
+| note  | ?string | The note (max 256 characters) |
+
+<RouteHeader method="GET" url="/users/@me/affinities/users">
+  Get User Affinities
+</RouteHeader>
+
+Returns the current user's affinity scores for other users. Affinity scores are a measure of how likely a user is to be friends with another user.
+
+<Alert type="info">
+
+User affinities that share a mutual guild are also [implicit relationships](/resources/relationships#relationship-object).
+
+</Alert>
+
+###### Response Body
+
+| Field           | Type                                                    | Description                                |
+| --------------- | ------------------------------------------------------- | ------------------------------------------ |
+| user_affinities | array[[user affinity](#user-affinity-structure) object] | The user's affinity scores for other users |
+
+###### User Affinity Structure
+
+| Field    | Type      | Description        |
+| -------- | --------- | ------------------ |
+| user_id  | snowflake | The user's ID      |
+| affinity | float     | The affinity score |
+
+<RouteHeader method="GET" url="/users/@me/affinities/v2/users">
+  Get User Affinities v2
+</RouteHeader>
+
+Returns more detailed user affinity scores for the current user.
+
+###### Response Body
+
+| Field           | Type                                                          | Description                                |
+| --------------- | ------------------------------------------------------------- | ------------------------------------------ |
+| user_affinities | array[[user affinity v2](#user-affinity-v2-structure) object] | The user's affinity scores for other users |
+
+###### User Affinity v2 Structure
+
+| Field                      | Type      | Description                                                 |
+| -------------------------- | --------- | ----------------------------------------------------------- |
+| other_user_id              | snowflake | The user's ID                                               |
+| user_segment               | string    | The [usage segment](#user-segment-type) of the current user |
+| other_user_segment         | string    | The [usage segment](#user-segment-type) of the user         |
+| is_friend                  | boolean   | Whether the user is a friend                                |
+| dm_probability             | float     | The affinity score for direct messaging                     |
+| dm_rank                    | integer   | The rank of the direct message affinity                     |
+| vc_probability             | float     | The affinity score for voice calling                        |
+| vc_rank                    | integer   | The rank of the voice call affinity                         |
+| server_message_probability | float     | The affinity score for guild messaging                      |
+| server_message_rank        | integer   | The rank of the guild message affinity                      |
+| communication_probability  | float     | The overall communication affinity score                    |
+| communication_rank         | integer   | The rank of the overall communication affinity              |
+
+###### User Segment Type
+
+| Value       | Description                                  |
+| ----------- | -------------------------------------------- |
+| HFU_MAU     | High Frequency User, Monthly Active User     |
+| NON_HFU_MAU | Non-High Frequency User, Monthly Active User |
+| NON_MAU     | Non-Monthly Active User                      |
+
+###### Example User Affinities v2
+
+```json
+{
+  "other_user_id": "1001086404203389018",
+  "user_segment": "HFU_MAU",
+  "other_user_segment": "HFU_MAU",
+  "is_friend": true,
+  "dm_probability": 0.869776725769043,
+  "dm_rank": 1,
+  "vc_probability": 0.004896213300526142,
+  "vc_rank": 4,
+  "server_message_probability": 0.846949577331543,
+  "server_message_rank": 6,
+  "communication_probability": 0.573874172133704,
+  "communication_rank": 1
+}
+```
+
+<RouteHeader method="GET" url="/users/@me/affinities/guilds">
+  Get Guild Affinities
+</RouteHeader>
+
+Returns the current user's affinity scores for their joined guilds. Affinity scores are a measure of how likely a user is to interact with a guild.
+
+###### Response Body
+
+| Field            | Type                                                      | Description                                 |
+| ---------------- | --------------------------------------------------------- | ------------------------------------------- |
+| guild_affinities | array[[guild affinity](#guild-affinity-structure) object] | The user's affinity scores for their guilds |
+
+###### Guild Affinity Structure
+
+| Field    | Type      | Description        |
+| -------- | --------- | ------------------ |
+| guild_id | snowflake | The guild's ID     |
+| affinity | float     | The affinity score |
+
+<RouteHeader method="GET" url="/users/@me/affinities/channels">
+  Get Channel Affinities
+</RouteHeader>
+
+Returns the current user's affinity scores for their participated channels. Affinity scores are a measure of how likely a user is to interact with a channel.
+
+###### Response Body
+
+| Field              | Type                                                          | Description                                   |
+| ------------------ | ------------------------------------------------------------- | --------------------------------------------- |
+| channel_affinities | array[[channel affinity](#channel-affinity-structure) object] | The user's affinity scores for their channels |
+
+###### Channel Affinity Structure
+
+| Field      | Type      | Description        |
+| ---------- | --------- | ------------------ |
+| channel_id | snowflake | The channel's ID   |
+| affinity   | float     | The affinity score |
+
+<RouteHeader method="GET" url="/tutorial">
+  Get Tutorial
+</RouteHeader>
+
+Returns the current user's [tutorial](/topics/gateway-events#tutorial-structure) object, which contains information about the user's tutorial progress. If no tutorial is available, returns a 204 empty response instead.
+
+<RouteHeader method="PUT" url="/tutorial/indicators/{indicator}">
+  Confirm Tutorial Indicator
+</RouteHeader>
+
+Confirms the given [tutorial](/topics/gateway-events#tutorial-structure) indicator. Returns a 204 empty response on success.
+
+<RouteHeader method="POST" url="/tutorial/indicators/suppress">
+  Suppress Tutorial
+</RouteHeader>
+
+Suppresses all [tutorial](/topics/gateway-events#tutorial-structure) indicators. Returns a 204 empty response on success.
+
+<RouteHeader method="POST" url="/hypesquad/online">
+  Join HypeSquad Online
+</RouteHeader>
+
+Joins a HypeSquad house and applies the relevant [user flag](#user-flags) to the current user. Returns a 204 empty response on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+###### JSON Params
+
+| Field    | Type    | Description                                     |
+| -------- | ------- | ----------------------------------------------- |
+| house_id | integer | The [HypeSquad house](#hypesquad-house) to join |
+
+###### HypeSquad House
+
+| Value | Description          |
+| ----- | -------------------- |
+| 1     | HypeSquad Bravery    |
+| 2     | HypeSquad Brilliance |
+| 3     | HypeSquad Balance    |
+
+<RouteHeader method="DELETE" url="/hypesquad/online">
+  Leave HypeSquad Online
+</RouteHeader>
+
+Leaves the current user's HypeSquad house and removes the relevant [user flag](#user-flags). Returns a 204 empty response on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+<RouteHeader method="POST" url="/developers/active-program">
+  Join Active Developer Program
+</RouteHeader>
+
+Joins the active developer program and applies the [`ACTIVE_DEVELOPER` user flag](#user-flags) to the current user. Requires the `MANAGE_WEBHOOKS` permission in the target channel. Returns a 204 empty response on success. Fires a [User Update](/topics/gateway-events#user-update) and [Webhooks Update](/topics/gateway-events#webhooks-update) Gateway event.
+
+<Alert type="note">
+
+If the application the user is joining the program with loses the [`ACTIVE` and `ACTIVE_GRACE_PERIOD` application flags](/resources/application#application-flags), the user will have their [`ACTIVE_DEVELOPER` user flag](#user-flags) removed.
+
+</Alert>
+
+###### JSON Params
+
+| Field              | Type                                                  | Description                                        |
+| ------------------ | ----------------------------------------------------- | -------------------------------------------------- |
+| application_id ^1^ | snowflake                                             | The ID of the application to join the program with |
+| channel_id ^2^     | The ID of the channel to create a follower webhook in |
+
+^1^ User must be the owner of the application or member of the current team. The application must have the [`ACTIVE` application flag](/resources/application#application-flags).
+
+^2^ This webhook will point to the official Discord Developers #developer-news channel and will be used to send updates about developing on Discord.
+
+###### Response Body
+
+| Field    | Type                                                                  | Description          |
+| -------- | --------------------------------------------------------------------- | -------------------- |
+| follower | [followed channel](/resources/channel#followed-channel-object) object | The followed channel |
+
+<RouteHeader method="DELETE" url="/developers/active-program">
+  Leave Active Developer Program
+</RouteHeader>
+
+Leaves the active developer program and removes the [`ACTIVE_DEVELOPER` user flag](#user-flags) from the current user. Returns a 204 empty response on success. Fires a [User Update](/topics/gateway-events#user-update) Gateway event.
+
+<Alert type="warn">
+
+This endpoint does not remove the webhook created by the user when joining the program. The webhook must be manually deleted.
+
+</Alert>
+
+<RouteHeader method="POST" url="/dev-portal-csat-survey-response">
+  Submit Developer Portal CSAT Survey
+</RouteHeader>
+
+Submits a customer satisfaction survey response for the development experience on Discord. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field         | Type      | Description                        |
+| ------------- | --------- | ---------------------------------- |
+| user_id       | snowflake | The ID of the client user          |
+| csat_response | integer   | The rating given by the user (1-5) |
+
+<RouteHeader method="GET" url="/users/@me/premium-usage">
+  Get User Premium Usage
+</RouteHeader>
+
+Returns the current user's premium usage for various perks. Only available for users with Nitro.
+
+###### Response Body
+
+| Field                 | Type                                             | Description                                     |
+| --------------------- | ------------------------------------------------ | ----------------------------------------------- |
+| nitro_sticker_sends   | [premium usage](#premium-usage-structure) object | The number of Nitro sticker the user has sent   |
+| total_animated_emojis | [premium usage](#premium-usage-structure) object | The number of animated emojis the user has sent |
+| total_global_emojis   | [premium usage](#premium-usage-structure) object | The number of global emojis the user has sent   |
+| total_large_uploads   | [premium usage](#premium-usage-structure) object | The number of large uploads the user has made   |
+| total_hd_streams      | [premium usage](#premium-usage-structure) object | The number of streams the user has made in HD   |
+| hd_hours_streamed     | [premium usage](#premium-usage-structure) object | The number of hours the user has streamed in HD |
+
+###### Premium Usage Structure
+
+| Field | Type    | Description                            |
+| ----- | ------- | -------------------------------------- |
+| value | integer | The total number of uses for this perk |
+
+###### Example Response
+
+```json
+{
+  "total_large_uploads": {
+    "value": 50
+  },
+  "total_global_emojis": {
+    "value": 967
+  },
+  "total_animated_emojis": {
+    "value": 217
+  },
+  "nitro_sticker_sends": {
+    "value": 303
+  },
+  "hd_hours_streamed": {
+    "value": 100
+  },
+  "total_hd_streams": {
+    "value": 50
+  }
+}
+```
+
+<RouteHeader method="GET" url="/user-profile-effects">
+  Get User Profile Effects
+</RouteHeader>
+
+Returns the list of [profile effects](https://support.discord.com/hc/en-us/articles/17828465914263-Profile-Effects) available to display.
+
+###### Response Body
+
+| Field                  | Type                                                                    | Description                                  |
+| ---------------------- | ----------------------------------------------------------------------- | -------------------------------------------- |
+| profile_effect_configs | array[[profile effect config](#profile-effect-config-structure) object] | The list of profile effects available to use |
+
+###### Profile Effect Config Structure
+
+| Field               | Type                                                                          | Description                                                                        |
+| ------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| id                  | string                                                                        | The ID of the profile effect                                                       |
+| type                | integer                                                                       | The [type of collectible](#collectible-type) (always `PROFILE_EFFECT`)             |
+| sku_id              | string                                                                        | The ID of the profile effect SKU                                                   |
+| title               | string                                                                        | The title of the profile effect                                                    |
+| description         | string                                                                        | The description of the profile effect                                              |
+| accessibilityLabel  | string                                                                        | An accessible description of the profile effect                                    |
+| animationType       | integer                                                                       | The [type of animation](#profile-effect-animation-type) used by the profile effect |
+| thumbnailPreviewSrc | string                                                                        | The URL of the profile effect's thumbnail preview image (in APNG format)           |
+| reducedMotionSrc    | string                                                                        | A URL of the profile effect with reduced motion (in APNG format)                   |
+| effects             | array[[profile effect animation](#profile-effect-animation-structure) object] | The animation frames for the profile effect                                        |
+
+###### Profile Effect Animation Structure
+
+| Field             | Type                                                                    | Description                                                      |
+| ----------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| src               | string                                                                  | The URL of the animation image (in APNG format)                  |
+| loop              | boolean                                                                 | Whether the animation frame should loop                          |
+| height            | integer                                                                 | The height of the animation image                                |
+| width             | integer                                                                 | The width of the animation image                                 |
+| duration          | integer                                                                 | The duration of the animation frame (in milliseconds)            |
+| start             | integer                                                                 | The start time of the animation frame (in milliseconds)          |
+| loopDelay         | integer                                                                 | The delay between loops of the animation frame (in milliseconds) |
+| position          | [profile effect position](#profile-effect-position-structure) object    | The position of the animation frame                              |
+| zIndex            | integer                                                                 | The z-index of the animation frame                               |
+| randomizedSources | array[[profile effect source](#profile-effect-source-structure) object] | The sources to randomize the `src` from                          |
+
+###### Profile Effect Position Structure
+
+| Field | Type    | Description                             |
+| ----- | ------- | --------------------------------------- |
+| x     | integer | The x-coordinate of the animation frame |
+| y     | integer | The y-coordinate of the animation frame |
+
+###### Profile Effect Source Structure
+
+| Field | Type   | Description                                     |
+| ----- | ------ | ----------------------------------------------- |
+| src   | string | The URL of the animation image (in APNG format) |
+
+###### Collectible Type
+
+| Value | Name              | Description                     |
+| ----- | ----------------- | ------------------------------- |
+| 0     | AVATAR_DECORATION | An avatar decoration            |
+| 1     | PROFILE_EFFECT    | A profile effect animation      |
+| 2     | NAMEPLATE         | A nameplate                     |
+| 1000  | BUNDLE            | A bundle of collectibles        |
+| 2000  | VARIANTS_GROUP    | A group of collectible variants |
+| 3000  | EXTERNAL_SKU      | An external SKU                 |
+
+###### Profile Effect Animation Type
+
+| Value | Name         | Description                        |
+| ----- | ------------ | ---------------------------------- |
+| 0     | UNSPECIFIED  | The animation type is unspecified  |
+| 1     | PERSISTENT   | The animation type is persistent   |
+| 2     | INTERMITTENT | The animation type is intermittent |
+
+###### Example Profile Effect Config
+
+```json
+{
+  "type": 1,
+  "id": "1139323075519852625",
+  "sku_id": "1139323092645183591",
+  "title": "Hydro Blast",
+  "description": "Time to make a splash.",
+  "accessibilityLabel": "A powerful stream of water swirls and twirls in the air. Wait, where's it headed off to?!",
+  "animationType": 2,
+  "thumbnailPreviewSrc": "https://cdn.discordapp.com/assets/profile_effects/effects/b17d139f2e9/splash/thumbnail.png",
+  "reducedMotionSrc": "https://cdn.discordapp.com/assets/profile_effects/effects/b17d139f2e9/splash/reducedMotion.png",
+  "effects": [
+    {
+      "src": "https://cdn.discordapp.com/assets/profile_effects/effects/b17d139f2e9/splash/intro.png",
+      "loop": false,
+      "height": 880,
+      "width": 450,
+      "duration": 2880,
+      "start": 0,
+      "loopDelay": 0,
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "zIndex": 100,
+      "randomizedSources": []
+    },
+    {
+      "src": "https://cdn.discordapp.com/assets/profile_effects/effects/b17d139f2e9/splash/loop.png",
+      "loop": true,
+      "height": 880,
+      "width": 450,
+      "duration": 2880,
+      "start": 5760,
+      "loopDelay": 5760,
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "zIndex": 100,
+      "randomizedSources": []
+    }
+  ]
+}
+```
+
+<RouteHeader method="GET" url="/users/@me/consumable/confetti">
+  Get Confetti Potions
+</RouteHeader>
+
+Returns the number of confetti potions left to use.
+
+###### Response Body
+
+| Field       | Type                                                             | Description                                    |
+| ----------- | ---------------------------------------------------------------- | ---------------------------------------------- |
+| entitlement | ?[entitlement](/resources/entitlement#entitlement-object) object | The entitlement to which the potions belong to |
+| num_potions | integer                                                          | Number of unused potions left                  |
+
+<RouteHeader method="POST" url="/users/@me/consumable/confetti">
+  Apply Confetti Potion
+</RouteHeader>
+
+Applies a confetti potion to a message. To use custom emoji, you must encode it in the format `name:id` with the emoji name and emoji ID. Returns a 204 empty response on success.
+
+###### JSON Params
+
+| Field      | Type      | Description                                           |
+| ---------- | --------- | ----------------------------------------------------- |
+| channel_id | snowflake | The ID of the channel the message is in               |
+| message_id | snowflake | The ID of the message to apply the confetti potion to |
+| emoji_name | string    | Unicode emoji or custom emoji name and ID             |
+
+<RouteHeader method="GET" url="/users/@me/saved-messages">
+  Get Saved Messages
+</RouteHeader>
+
+Returns message bookmarks and reminders for the current user.
+
+###### Response Body
+
+| Field   | Type                                                    | Description                |
+| ------- | ------------------------------------------------------- | -------------------------- |
+| results | array[[saved message](#saved-message-structure) object] | The list of saved messages |
+
+###### Saved Message Structure
+
+| Field     | Type                                                 | Description                   |
+| --------- | ---------------------------------------------------- | ----------------------------- |
+| message   | ?[message](/resources/message#message-object) object | The saved message             |
+| save_data | [save data](#save-data-structure) object             | The save data for the message |
+
+###### Save Data Structure
+
+| Field           | Type               | Description                              |
+| --------------- | ------------------ | ---------------------------------------- |
+| channel_id      | snowflake          | The ID of the channel                    |
+| message_id      | snowflake          | The ID of the message                    |
+| guild_id?       | snowflake          | The ID of the guild                      |
+| saved_at        | ISO8601 timestamp  | The timestamp when the message was saved |
+| author_summary  | string             | Unknown                                  |
+| channel_summary | string             | Unknown                                  |
+| message_summary | string             | Unknown                                  |
+| notes           | string             | Unknown                                  |
+| due_at          | ?ISO8601 timestamp | When the reminder is due                 |
+
+<RouteHeader method="PUT" url="/users/@me/saved-messages/{channel.id}/{message.id}">
+  Save Message
+</RouteHeader>
+
+Saves a message for the current user. Returns a [saved message](#saved-message-structure) object on success. Fires a [Saved Message Create](/topics/gateway-events#saved-message-create) Gateway event.
+
+<Alert type="info">
+
+A maximum number of 200 saved messages without a reminder can be saved per user.
+
+</Alert>
+
+###### JSON Params
+
+| Field   | Type               | Description              |
+| ------- | ------------------ | ------------------------ |
+| due_at? | ?ISO8601 timestamp | When the reminder is due |
+
+<RouteHeader method="DELETE" url="/users/@me/saved-messages/{channel.id}/{message.id}">
+  Unsave Message
+</RouteHeader>
+
+Unsaves a message for the current user. Returns a 204 empty response on success. Fires a [Saved Message Delete](/topics/gateway-events#saved-message-delete) Gateway event.
+
+<RouteHeader method="POST" url="/age-verification/verify">
+  Verify Age
+</RouteHeader>
+
+Starts the age verification process using a third-party age verification provider. After the process is complete, a [age verification system message](/resources/message#age-verification-system-message) is sent to the user.
+
+###### Response Body
+
+| Field                    | Type   | Description                                                                |
+| ------------------------ | ------ | -------------------------------------------------------------------------- |
+| verification_request_id  | string | UUID generated by the server to track the current age verification request |
+| verification_vendor_name | string | The third party age verification provider (currently always `K_ID`)        |
+| verification_webview_url | string | The webview URL to iframe into the client                                  |

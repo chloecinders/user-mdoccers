@@ -1,0 +1,31 @@
+---
+name: Overview
+sort: 1
+---
+
+# Remote Authentication
+
+Remote authentication is a feature that allows effortless transfer of credentials from one device to another.
+While officially this is used to authenticate desktop Discord clients using an already logged in mobile Discord client,
+this is useful when you want to login to a device that does not have a keyboard or a display, such as a smart watch or a smart TV.
+
+## How it Works
+
+The way the authentication process works is fairly simple.
+The client that wants to authenticate itself (referred to as "desktop") connects to a special remote auth Gateway and performs a key exchange.
+The Gateway eventually responds with a value that can be displayed within a QR code for the authenticated device (referred to as "mobile") to scan:
+
+![Remote Authentication desktop flow](/images/remote-auth-desktop.webp)
+
+When the QR code is scanned, the mobile client sends a request to initialize the authentication process. The desktop client then receives the mobile client's user information.
+After this occurs, the user has the ability to verify and accept/deny the authentication request on the mobile client. If the user accepts the request, the desktop client receives the user's authorization token.
+
+<img src="/images/remote-auth-mobile.webp" alt="Remote Authentication mobile flow" width="1000" />
+
+## How to Use
+
+To get started with using remote authentication, you can fulfill the role of either the desktop client or the mobile client.
+The desktop client is the client that wants to authenticate itself, and the mobile client is the client that will be used to verify the authentication request.
+
+For detailed information on the desktop client, please refer to the [desktop section](/remote-authentication/desktop).
+To learn more about the mobile client, visit the [mobile section](/remote-authentication/mobile).

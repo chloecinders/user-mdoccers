@@ -1,0 +1,233 @@
+# Guild Templates
+
+Templates represent a code that when used, creates a guild based on a snapshot of an existing guild. For a list of official templates, refer to [this Gist](https://gist.github.com/dolfies/f70b1de53a1d185d58563b9ca8bb248d).
+
+### Guild Template Object
+
+###### Guild Template Structure
+
+| Field                       | Type                                                  | Description                                            |
+| --------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| code                        | string                                                | The code of the template (unique ID)                   |
+| name                        | string                                                | The name of the template (1-100 characters)            |
+| description                 | ?string                                               | The description for the template (max 120 characters)  |
+| usage_count                 | integer                                               | Number of times this template has been used            |
+| creator_id                  | snowflake                                             | The ID of the user who created the template            |
+| creator                     | partial [user](/resources/user#user-object) object    | The user who created the template                      |
+| created_at                  | ISO8601 timestamp                                     | When this template was created                         |
+| updated_at                  | ISO8601 timestamp                                     | When this template was last synced to the source guild |
+| source_guild_id             | snowflake                                             | The ID of the guild this template is based on          |
+| serialized_source_guild ^1^ | partial [guild](/resources/guild#guild-object) object | The guild snapshot this template contains              |
+| is_dirty                    | ?boolean                                              | Whether the template has unsynced changes              |
+
+^1^ This partial guild object is special in that it and the objects within always contain applicable optional fields (even if they're not applicable).
+This leads to unexpected behavior, such as `available_tags` being serialized for voice channels.
+Additionally, the main guild object is missing the `id` field, and all other `id` fields are not real snowflakes.
+
+###### Example Guild Template Object
+
+```json
+{
+  "code": "2TffvPucqHkN",
+  "name": "Blank Server",
+  "description": null,
+  "usage_count": 34729,
+  "creator_id": "268473310986240001",
+  "creator": {
+    "id": "268473310986240001",
+    "username": "discordapp",
+    "avatar": "f749bb0cbeeb26ef21eca719337d20f1",
+    "discriminator": "0",
+    "public_flags": 4325376,
+    "banner": null,
+    "accent_color": null,
+    "global_name": null,
+    "avatar_decoration_data": null,
+    "primary_guild": null
+  },
+  "created_at": "2020-04-17T20:59:35+00:00",
+  "updated_at": "2020-04-17T20:59:35+00:00",
+  "source_guild_id": "700811170902179862",
+  "serialized_source_guild": {
+    "name": "Blank Server",
+    "description": null,
+    "region": "us-west",
+    "verification_level": 0,
+    "default_message_notifications": 0,
+    "explicit_content_filter": 0,
+    "preferred_locale": "en-US",
+    "afk_channel_id": null,
+    "afk_timeout": 300,
+    "system_channel_id": 2,
+    "system_channel_flags": 0,
+    "roles": [
+      {
+        "id": 0,
+        "name": "@everyone",
+        "permissions": "2248329584430657",
+        "color": 0,
+        "hoist": false,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null
+      }
+    ],
+    "channels": [
+      {
+        "id": 1,
+        "type": 4,
+        "name": "Text Channels",
+        "position": 0,
+        "topic": null,
+        "bitrate": 64000,
+        "user_limit": 0,
+        "nsfw": false,
+        "rate_limit_per_user": 0,
+        "parent_id": null,
+        "default_auto_archive_duration": null,
+        "permission_overwrites": [],
+        "available_tags": null,
+        "template": "",
+        "default_reaction_emoji": null,
+        "default_thread_rate_limit_per_user": null,
+        "default_sort_order": null,
+        "default_forum_layout": null,
+        "icon_emoji": null,
+        "theme_color": null
+      },
+      {
+        "id": 2,
+        "type": 0,
+        "name": "general",
+        "position": 0,
+        "topic": null,
+        "bitrate": 64000,
+        "user_limit": 0,
+        "nsfw": false,
+        "rate_limit_per_user": 0,
+        "parent_id": 1,
+        "default_auto_archive_duration": null,
+        "permission_overwrites": [],
+        "available_tags": null,
+        "template": "",
+        "default_reaction_emoji": null,
+        "default_thread_rate_limit_per_user": null,
+        "default_sort_order": null,
+        "default_forum_layout": null,
+        "icon_emoji": null,
+        "theme_color": null
+      },
+      {
+        "id": 3,
+        "type": 4,
+        "name": "Voice Channels",
+        "position": 0,
+        "topic": null,
+        "bitrate": 64000,
+        "user_limit": 0,
+        "nsfw": false,
+        "rate_limit_per_user": 0,
+        "parent_id": null,
+        "default_auto_archive_duration": null,
+        "permission_overwrites": [],
+        "available_tags": null,
+        "template": "",
+        "default_reaction_emoji": null,
+        "default_thread_rate_limit_per_user": null,
+        "default_sort_order": null,
+        "default_forum_layout": null,
+        "icon_emoji": null,
+        "theme_color": null
+      },
+      {
+        "id": 4,
+        "type": 2,
+        "name": "General",
+        "position": 0,
+        "topic": null,
+        "bitrate": 64000,
+        "user_limit": 0,
+        "nsfw": false,
+        "rate_limit_per_user": 0,
+        "parent_id": 3,
+        "default_auto_archive_duration": null,
+        "permission_overwrites": [],
+        "available_tags": null,
+        "template": "",
+        "default_reaction_emoji": null,
+        "default_thread_rate_limit_per_user": null,
+        "default_sort_order": null,
+        "default_forum_layout": null,
+        "icon_emoji": null,
+        "theme_color": null
+      }
+    ]
+  },
+  "is_dirty": null
+}
+```
+
+## Endpoints
+
+<RouteHeader method="GET" url="/guilds/templates/{template.code}" unauthenticated>
+  Get Guild Template
+</RouteHeader>
+
+Returns a [guild template](#guild-template-object) object for the given code.
+
+<RouteHeader method="POST" url="/guilds/templates/{template.code}">
+  Use Guild Template
+</RouteHeader>
+
+Create a new guild based on a template. Returns a [guild](/resources/guild#guild-object) object on success. Fires a [Guild Create](/topics/gateway-events#guild-create) Gateway event.
+
+###### JSON Params
+
+| Field | Type                              | Description                              |
+| ----- | --------------------------------- | ---------------------------------------- |
+| name  | string                            | The name of the guild (2-100 characters) |
+| icon? | [image data](/reference#cdn-data) | 128x128 image for the guild's icon       |
+
+<RouteHeader method="GET" url="/guilds/{guild.id}/templates">
+  Get Guild Templates
+</RouteHeader>
+
+Returns an array of [guild template](#guild-template-object) objects. Requires the `MANAGE_GUILD` permission.
+
+<RouteHeader method="POST" url="/guilds/{guild.id}/templates">
+  Create Guild Template
+</RouteHeader>
+
+Creates a template for the guild. Requires the `MANAGE_GUILD` permission. Returns the created [guild template](#guild-template-object) object on success.
+
+###### JSON Params
+
+| Field        | Type    | Description                                           |
+| ------------ | ------- | ----------------------------------------------------- |
+| name         | string  | The name of the template (1-100 characters)           |
+| description? | ?string | The description for the template (max 120 characters) |
+
+<RouteHeader method="PUT" url="/guilds/{guild.id}/templates/{template.code}">
+  Sync Guild Template
+</RouteHeader>
+
+Syncs the template to the guild's current state. Requires the `MANAGE_GUILD` permission. Returns the updated [guild template](#guild-template-object) object on success.
+
+<RouteHeader method="PATCH" url="/guilds/{guild.id}/templates/{template.code}">
+  Modify Guild Template
+</RouteHeader>
+
+Modifies the template's metadata. Requires the `MANAGE_GUILD` permission. Returns the updated [guild template](#guild-template-object) object on success.
+
+###### JSON Params
+
+| Field        | Type    | Description                                           |
+| ------------ | ------- | ----------------------------------------------------- |
+| name?        | string  | The name of the template (1-100 characters)           |
+| description? | ?string | The description for the template (max 120 characters) |
+
+<RouteHeader method="DELETE" url="/guilds/{guild.id}/templates/{template.code}">
+  Delete Guild Template
+</RouteHeader>
+
+Deletes the template. Requires the `MANAGE_GUILD` permission. Returns the deleted [guild template](#guild-template-object) object on success.

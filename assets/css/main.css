@@ -1,0 +1,11 @@
+:root {
+    --content-max-width: 1200px !important;
+}
+
+h2, h3 {
+    margin-block-start: 16px;
+}
+
+table {
+    width: 100%;
+}

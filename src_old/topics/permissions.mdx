@@ -1,0 +1,231 @@
+# Permissions
+
+Permissions are a way to limit and grant certain abilities to users in Discord. A set of base permissions can be configured at the guild level for different roles. When these roles are attached to users, they grant or revoke specific privileges within the guild. Along with the guild-level permissions, Discord also supports permission overwrites that can be assigned to individual roles or members on a per-channel basis.
+
+<Alert type="info">
+
+[Application command permissions](/interactions/application-commands#permissions) allow you to enable or disable
+specific commands for entire channels in addition to individual roles or users.
+
+</Alert>
+
+Permissions are stored in a variable-length integer serialized into a string, and are calculated using bitwise operations. For example, the permission value `123` will be serialized as `"123"`. For long-term stability, it's recommended to deserialize the permissions using your preferred languages' Big Integer libraries. The total permissions integer can be determined by OR-ing (`|`) together each individual value, and flags can be checked using AND (`&`) operations.
+
+In API v8 and above, all permissions are serialized as strings, including the `allow` and `deny` fields in overwrites. Any new permissions are rolled back into the base field.
+
+<Alert type="info">
+
+In [API v7 and below (now deprecated)](/reference#api-versions), the `permissions`, `allow`, and `deny` fields in
+roles and overwrites are still serialized as a number; however, these numbers shall not grow beyond 31 bits. During
+the remaining lifetime of these API versions, all new permission bits will only be introduced in `permissions_new`,
+`allow_new`, and `deny_new`. These `_new` fields are just for response serialization; requests with these fields
+should continue to use the original `permissions`, `allow`, and `deny` fields, which accept both string or number
+values.
+
+</Alert>
+
+```py
+# Permissions value that can Send Messages (0x800) and Add Reactions (0x40):
+permissions = 0x40 | 0x800 # 2112
+
+# Checking for flags that are set:
+(permissions & 0x40) == 0x40   # True
+(permissions & 0x800) == 0x800 # True
+
+# Kick Members (0x2) was not set:
+(permissions & 0x2) == 0x2 # False
+```
+
+Additional logic is required when permission overwrites are involved; this is further explained below. For more information about bitwise operations and flags, see [this page](https://en.wikipedia.org/wiki/Bit_field).
+
+Below is a table of all current permissions, their integer values in hexadecimal, brief descriptions of the privileges that they grant, and the channel type they apply to, if applicable.
+
+###### Bitwise Permission Flags
+
+| Value                                | Name                                    | Description                                                                                                                                         | Channel Type |
+| ------------------------------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `0x0000000000000001` `(1 << 0)`      | CREATE_INSTANT_INVITE                   | Allows creation of instant invites                                                                                                                  | T, V, S      |
+| `0x0000000000000002` `(1 << 1)`      | KICK_MEMBERS ^1^                        | Allows kicking members                                                                                                                              |              |
+| `0x0000000000000004` `(1 << 2)`      | BAN_MEMBERS ^1^                         | Allows banning members                                                                                                                              |              |
+| `0x0000000000000008` `(1 << 3)`      | ADMINISTRATOR ^1^                       | Allows all permissions and bypasses channel permission overwrites                                                                                   |              |
+| `0x0000000000000010` `(1 << 4)`      | MANAGE_CHANNELS ^1^                     | Allows management and editing of channels                                                                                                           | T, V, S      |
+| `0x0000000000000020` `(1 << 5)`      | MANAGE_GUILD ^1^                        | Allows management and editing of the guild                                                                                                          |              |
+| `0x0000000000000040` `(1 << 6)`      | ADD_REACTIONS                           | Allows for the addition of reactions to messages                                                                                                    | T, V, S      |
+| `0x0000000000000080` `(1 << 7)`      | VIEW_AUDIT_LOG                          | Allows for viewing of audit logs                                                                                                                    |              |
+| `0x0000000000000100` `(1 << 8)`      | PRIORITY_SPEAKER                        | Allows for using priority speaker in a voice channel                                                                                                | V            |
+| `0x0000000000000200` `(1 << 9)`      | STREAM                                  | Allows the user to use video and stream (go live) in a voice channel                                                                                | V, S         |
+| `0x0000000000000400` `(1 << 10)`     | VIEW_CHANNEL                            | Allows guild members to view a channel, which includes reading messages in text channels and joining voice channels                                 | T, V, S      |
+| `0x0000000000000800` `(1 << 11)`     | SEND_MESSAGES                           | Allows for sending messages in a channel and creating threads in a forum (does not allow sending messages in threads)                               | T, V, S      |
+| `0x0000000000001000` `(1 << 12)`     | SEND_TTS_MESSAGES                       | Allows for sending of `/tts` messages                                                                                                               | T, V, S      |
+| `0x0000000000002000` `(1 << 13)`     | MANAGE_MESSAGES ^1^                     | Allows for deletion of other users messages                                                                                                         | T, V, S      |
+| `0x0000000000004000` `(1 << 14)`     | EMBED_LINKS                             | Links sent by users with this permission will be auto-embedded                                                                                      | T, V, S      |
+| `0x0000000000008000` `(1 << 15)`     | ATTACH_FILES                            | Allows for uploading images and files                                                                                                               | T, V, S      |
+| `0x0000000000010000` `(1 << 16)`     | READ_MESSAGE_HISTORY                    | Allows for reading of message history                                                                                                               | T, V, S      |
+| `0x0000000000020000` `(1 << 17)`     | MENTION_EVERYONE                        | Allows for using the @everyone tag to notify all users in a channel, and the @here tag to notify all online users in a channel                      | T, V, S      |
+| `0x0000000000040000` `(1 << 18)`     | USE_EXTERNAL_EMOJIS                     | Allows the usage of custom emojis from other servers                                                                                                | T, V, S      |
+| `0x0000000000080000` `(1 << 19)`     | VIEW_GUILD_INSIGHTS                     | Allows for viewing guild insights                                                                                                                   |              |
+| `0x0000000000100000` `(1 << 20)`     | CONNECT                                 | Allows for joining of a voice channel                                                                                                               | V, S         |
+| `0x0000000000200000` `(1 << 21)`     | SPEAK                                   | Allows for speaking in a voice channel                                                                                                              | V            |
+| `0x0000000000400000` `(1 << 22)`     | MUTE_MEMBERS                            | Allows for muting members in a voice channel                                                                                                        | V, S         |
+| `0x0000000000800000` `(1 << 23)`     | DEAFEN_MEMBERS                          | Allows for deafening of members in a voice channel                                                                                                  | V            |
+| `0x0000000001000000` `(1 << 24)`     | MOVE_MEMBERS                            | Allows for moving of members between voice channels                                                                                                 | V, S         |
+| `0x0000000002000000` `(1 << 25)`     | USE_VAD                                 | Allows for using voice-activity-detection in a voice channel                                                                                        | V            |
+| `0x0000000004000000` `(1 << 26)`     | CHANGE_NICKNAME                         | Allows for modification of own nickname                                                                                                             |              |
+| `0x0000000008000000` `(1 << 27)`     | MANAGE_NICKNAMES                        | Allows for modification of other users nicknames                                                                                                    |              |
+| `0x0000000010000000` `(1 << 28)`     | MANAGE_ROLES ^1^                        | Allows management and editing of roles                                                                                                              | T, V, S      |
+| `0x0000000020000000` `(1 << 29)`     | MANAGE_WEBHOOKS ^1^                     | Allows management and editing of webhooks                                                                                                           | T, V, S      |
+| `0x0000000040000000` `(1 << 30)`     | MANAGE_EXPRESSIONS ^1^ ^3^              | Allows editing and deleting emojis, stickers, and soundboard sounds                                                                                 |              |
+| `0x0000000080000000` `(1 << 31)`     | USE_APPLICATION_COMMANDS                | Allows members to use application commands, including slash commands and context menu commands                                                      | T, V, S      |
+| `0x0000000100000000` `(1 << 32)`     | REQUEST_TO_SPEAK                        | Allows for requesting to speak in stage channels                                                                                                    | S            |
+| `0x0000000200000000` `(1 << 33)`     | MANAGE_EVENTS ^3^                       | Allows for editing and deleting scheduled events                                                                                                    | V, S         |
+| `0x0000000400000000` `(1 << 34)`     | MANAGE_THREADS ^1^                      | Allows for deleting and archiving threads, and viewing all private threads                                                                          | T            |
+| `0x0000000800000000` `(1 << 35)`     | CREATE_PUBLIC_THREADS                   | Allows for creating public and announcement threads                                                                                                 | T            |
+| `0x0000001000000000` `(1 << 36)`     | CREATE_PRIVATE_THREADS                  | Allows for creating private threads                                                                                                                 | T            |
+| `0x0000002000000000` `(1 << 37)`     | USE_EXTERNAL_STICKERS                   | Allows the usage of custom stickers from other servers                                                                                              | T, V, S      |
+| `0x0000004000000000` `(1 << 38)`     | SEND_MESSAGES_IN_THREADS                | Allows for sending messages in threads                                                                                                              | T            |
+| `0x0000008000000000` `(1 << 39)`     | USE_EMBEDDED_ACTIVITIES                 | Allows for using Activities (applications with the `EMBEDDED` flag) in a voice channel                                                              | T, V         |
+| `0x0000010000000000` `(1 << 40)`     | MODERATE_MEMBERS ^2^                    | Allows for timing out users to prevent them from sending or reacting to messages in chat and threads, and from speaking in voice and stage channels |              |
+| `0x0000020000000000` `(1 << 41)`     | VIEW_CREATOR_MONETIZATION_ANALYTICS ^1^ | Allows for viewing guild role subscriptions insights                                                                                                |              |
+| `0x0000040000000000` `(1 << 42)`     | USE_SOUNDBOARD                          | Allows the usage of the soundboard in a voice channel                                                                                               | V            |
+| `0x0000080000000000` `(1 << 43)`     | CREATE_EXPRESSIONS ^3^                  | Allows for creating emojis, stickers, and soundboard sounds, and editing/deleting ones created by the current user                                  |              |
+| `0x0000100000000000` `(1 << 44)`     | CREATE_EVENTS ^3^                       | Allows for creating scheduled events, and editing/deleting ones created by the current user                                                         |              |
+| `0x0000040000000000` `(1 << 45)`     | USE_EXTERNAL_SOUNDS                     | Allows the usage of custom soundboard sounds from other servers                                                                                     | V            |
+| `0x0000400000000000` `(1 << 46)`     | SEND_VOICE_MESSAGES                     | Allows for sending voice messages in a channel                                                                                                      | T, V, S      |
+| ~~`0x0000800000000000` `(1 << 47)`~~ | ~~USE_CLYDE_AI~~                        | ~~Allows members to interact with the Clyde AI integration~~                                                                                        | ~~T, V, S~~  |
+| `0x0001000000000000` `(1 << 48)`     | SET_VOICE_CHANNEL_STATUS                | Allows setting voice channel status                                                                                                                 | V            |
+| `0x0002000000000000` `(1 << 49)`     | SEND_POLLS                              | Allows sending polls                                                                                                                                | T, V, S      |
+| `0x0004000000000000` `(1 << 50)`     | USE_EXTERNAL_APPS                       | Allows the usage of [user-installed applications](/resources/application#application-integration-type) without forced-ephemeral responses           | T, V, S      |
+
+^1^ These permissions require the user or bot owner account to use [multi-factor authentication](/topics/oauth2#multi-factor-authentication-requirement) when used on a guild that has guild-wide MFA enabled.
+
+^2^ See [Permissions for Timed Out/Quarantined Members](/topics/permissions#permissions-for-timed-out/quarantined-members) to understand how permissions are temporarily modified for timed out/quarantined users.
+
+^3^ The separate events for resource creation are only available to clients that specify a recent [client build number](/reference#client-properties). Otherwise, they are ignored and the management permissions are enforced.
+
+Note that permission names may be referred to differently in the Discord client. For example, "Manage Permissions" refers to `MANAGE_ROLES`, "Use Voice Activity" refers to `USE_VAD`, and "Timeout Members" refers to `MODERATE_MEMBERS`.
+
+The channel type abbreviations refer to the following:
+
+| Channel Type | Values                                                           |
+| ------------ | ---------------------------------------------------------------- |
+| T            | `GUILD_TEXT`, `GUILD_ANNOUNCEMENT`, `GUILD_FORUM`, `GUILD_MEDIA` |
+| V            | `GUILD_VOICE`                                                    |
+| S            | `GUILD_STAGE_VOICE`                                              |
+
+## Permission Hierarchy
+
+How permissions apply may at first seem intuitive, but there are some hidden restrictions that prevent users from performing certain inappropriate actions based on a user's highest role compared to its target's highest role. A user's highest role is its role that has the greatest sorting priority in the guild, with the default @everyone role starting at 0. Permissions follow a hierarchy with the following rules:
+
+<Alert type="info">
+
+Guild roles are sorted using a key of (`position`, `id`). This means that if multiple roles have the same position, the roles are sorted by their IDs in ascending order.
+
+</Alert>
+
+- A user can grant roles to other users that are of a lower position than its own highest role.
+- A user can edit roles of a lower position than its highest role, but it can only grant permissions it has to those roles.
+- A user can only sort roles lower than its highest role.
+- A user can only kick, ban, and edit nicknames for users whose highest role is lower than the user's highest role.
+
+Otherwise, permissions do not obey the role hierarchy. For example, a user has two roles: A and B. A denies the `VIEW_CHANNEL` permission on a #coolstuff channel. B allows the `VIEW_CHANNEL` permission on the same #coolstuff channel. The user would ultimately be able to view the #coolstuff channel, regardless of the role positions.
+
+## Permission Overwrites
+
+Overwrites can be used to apply certain permissions to roles or members on a channel-level. Applicable permissions are indicated by a **T** for text channels, **V** for voice channels, or **S** for stage channels in the table above.
+
+When using overwrites, there are cases where permission collisions could occur for a user; that is to say, the user may have certain overwrites with permissions that contradict each other or their guild-level role permissions. With this in mind, permissions are applied to users in the following hierarchy:
+
+1. Base permissions given to @everyone are applied at a guild level
+2. Permissions allowed to a user by their roles are applied at a guild level
+3. Overwrites that deny permissions for @everyone are applied at a channel level
+4. Overwrites that allow permissions for @everyone are applied at a channel level
+5. Overwrites that deny permissions for specific roles are applied at a channel level
+6. Overwrites that allow permissions for specific roles are applied at a channel level
+7. Member-specific overwrites that deny permissions are applied at a channel level
+8. Member-specific overwrites that allow permissions are applied at a channel level
+
+The following pseudocode demonstrates this process programmatically:
+
+```py
+def compute_base_permissions(member, guild):
+    if guild.is_owner(member):
+        return ALL
+
+    role_everyone = guild.get_role(guild.id)  # get @everyone role
+    permissions = role_everyone.permissions
+
+    for role in member.roles:
+        permissions |= role.permissions
+
+    if permissions & ADMINISTRATOR == ADMINISTRATOR:
+        return ALL
+
+    return permissions
+
+def compute_overwrites(base_permissions, member, channel):
+    # ADMINISTRATOR overrides any potential permission overwrites, so there is nothing to do here.
+    if base_permissions & ADMINISTRATOR == ADMINISTRATOR:
+        return ALL
+
+    permissions = base_permissions
+    overwrite_everyone = overwrites.get(channel.guild_id)  # Find (@everyone) role overwrite and apply it.
+    if overwrite_everyone:
+        permissions &= ~overwrite_everyone.deny
+        permissions |= overwrite_everyone.allow
+
+    # Apply role specific overwrites.
+    overwrites = channel.permission_overwrites
+    allow = NONE
+    deny = NONE
+    for role_id in member.roles:
+        overwrite_role = overwrites.get(role_id)
+        if overwrite_role:
+            allow |= overwrite_role.allow
+            deny |= overwrite_role.deny
+
+    permissions &= ~deny
+    permissions |= allow
+
+    # Apply member specific overwrite if it exist.
+    overwrite_member = overwrites.get(member.user_id)
+    if overwrite_member:
+        permissions &= ~overwrite_member.deny
+        permissions |= overwrite_member.allow
+
+    return permissions
+
+def compute_permissions(member, channel):
+    base_permissions = compute_base_permissions(member, channel.guild)
+    return compute_overwrites(base_permissions, member, channel)
+```
+
+## Implicit Permissions
+
+Permissions in Discord are sometimes implicitly denied or allowed based on logical use. The two main cases are `VIEW_CHANNEL` and `SEND_MESSAGES` for text channels. Denying a user or a role `VIEW_CHANNEL` on a channel implicitly denies other permissions on the channel. Though permissions like `SEND_MESSAGES` are not explicitly denied for the user, they are ignored because the user cannot read messages in the channel.
+
+Denying `SEND_MESSAGES` implicitly denies `MENTION_EVERYONE`, `SEND_TTS_MESSAGES`, `ATTACH_FILES`, and `EMBED_LINKS`. Again, they are not explicitly denied when doing permissions calculations, but they are ignored because the user cannot do the base action of sending messages.
+
+For voice and stage channels, denying the `CONNECT` permission also implicitly denies other permissions such as `MANAGE_CHANNELS`.
+
+There may be other cases in which certain permissions implicitly deny or allow other permissions. In all cases, it is based on logical conclusions about how a user with certain permissions should or should not interact with Discord.
+
+## Inherited Permissions (Threads)
+
+Threads inherit permissions from the parent channel (the channel they were created in), with one exception: The `SEND_MESSAGES` permission is not inherited; users must have `SEND_MESSAGES_IN_THREADS` to send a message in a thread, which allows for users to participate in threads in places like announcement channels.
+
+Users must have the `VIEW_CHANNEL` permission to view _any_ threads in the channel, even if they are directly mentioned or added to the thread.
+
+## Permissions For Timed Out/Quarantined Members
+
+Timed out members will temporarily lose all permissions except `VIEW_CHANNEL` and `READ_MESSAGE_HISTORY`. This also applies to quarantined members, with the addition of the `CHANGE_NICKNAME` permission. Owners and users with the `ADMINISTRATOR` permission are exempt.
+
+## Discoverable Guild Permissions
+
+Guilds that are defined as [discoverable](/resources/discovery#definitions) have a unique permission setup to allow non-members to lurk the guild without joining it.
+Non-members inherit the `VIEW_CHANNEL` and `READ_MESSAGE_HISTORY` permission from the @everyone role, meaning they can view public channels and read messages in them. However, they cannot interact with the guild in any way, such as sending messages, reacting to messages, or joining voice channels.
+
+When lurking a discoverable guild with an active [public stage instance](/resources/stage-instance#definitions), non-members will inherit the additional permissions `CONNECT`, `REQUEST_TO_SPEAK`, `SPEAK`, and `USE_VAD` in the stage channel.
+
+## Permission Syncing
+
+Permissions with regards to categories and channels within categories are a bit tricky. Rather than inheritance, permissions are calculated by means of what is called Permission Syncing. If a child channel has the same permissions and overwrites (or lack thereof) as its parent category, the channel is considered "synced" to the category. Any further changes to a **parent category** will be reflected in its synced child channels. Any further changes to a **child channel** will cause it to become de-synced from its parent category, and its permissions will no longer change with changes to its parent category.

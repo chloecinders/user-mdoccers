@@ -1,0 +1,108 @@
+# Stage Instances
+
+A _stage instance_ holds information about a live stage. For more information on stages, see the [channel](/resources/channel#channel-object) object.
+
+## Definitions
+
+Below are some definitions related to stages.
+
+- **Liveness:** A stage channel is considered _live_ when there is an associated stage instance. Conversely, a stage channel is _not live_ when there is no associated stage instance.
+- **Speakers:** A participant of a stage channel is a _speaker_ when their [voice state](/resources/voice#voice-state-object)
+  is not `suppress`ed, and has no `request_to_speak_timestamp`.
+- **Moderators**: A member of the guild is a _moderator_ of a stage channel if they have all of the following [permissions](/topics/permissions#permissions):
+  - `MANAGE_CHANNELS`
+  - `MUTE_MEMBERS`
+  - `MOVE_MEMBERS`
+- **Topic**: This is the blurb that gets shown below the channel's name, among other places.
+- **Public**: A stage instance is public when it has a `privacy_level` of `PUBLIC`. While a guild has a public stage instance:
+  - Lurkers may join any stage channel with a public stage instance.
+  - Users in the stage can have the stage show in their [activities](/topics/gateway-events#presence).
+  - [Invites](/resources/invite#invite-object) to the stage channel will have the `stage_instance` field.
+
+## Auto Closing
+
+When a stage channel has no speakers for a certain period of time (on the order of minutes) the stage instance will be automatically deleted.
+
+### Stage Instance Object
+
+###### Stage Instance Structure
+
+| Field                                  | Type       | Description                                                                                                                    |
+| -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| id                                     | snowflake  | The ID of the stage instance                                                                                                   |
+| guild_id                               | snowflake  | The guild ID of the associated stage channel                                                                                   |
+| channel_id                             | snowflake  | The ID of the associated stage channel                                                                                         |
+| topic                                  | string     | The topic of the stage instance (1-120 characters)                                                                             |
+| privacy_level                          | integer    | The [privacy level](/resources/guild#privacy-level) of the stage instance                                                      |
+| invite_code                            | ?string    | The [invite code](/resources/invite#invite-object) that can be used to join the stage channel, if the stage instance is public |
+| discoverable_disabled **(deprecated)** | boolean    | Whether or not stage discovery is disabled                                                                                     |
+| guild_scheduled_event_id               | ?snowflake | The ID of the [scheduled event](/resources/guild-scheduled-event#guild-scheduled-event-object) for this stage instance         |
+
+###### Example Stage Instance
+
+```json
+{
+  "id": "840647391636226060",
+  "guild_id": "197038439483310086",
+  "channel_id": "733488538393510049",
+  "topic": "Testing, Testing, 123",
+  "privacy_level": 1,
+  "discoverable_disabled": false,
+  "guild_scheduled_event_id": "947656305244532806",
+  "invite_code": "xdMaxHJqp8"
+}
+```
+
+<RouteHeader method="POST" url="/stage-instances" supportsAuditReason>
+  Create Stage Instance
+</RouteHeader>
+
+Creates a new stage instance associated to a stage channel. Requires the user to be a moderator of the stage channel. Returns a [stage instance](#stage-instance-object) object.
+Fires a [Stage Instance Create](/topics/gateway-events#stage-instance-create) and optionally an [Invite Create](/topics/gateway-events#invite-create) and [Guild Scheduled Event Update](/topics/gateway-events#guild-scheduled-event-update) Gateway event.
+
+###### JSON Params
+
+| Field                         | Type      | Description                                                                                                            |
+| ----------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| channel_id                    | snowflake | The ID of the stage channel                                                                                            |
+| topic                         | string    | The topic of the stage instance (1-120 characters)                                                                     |
+| privacy_level?                | integer   | The [privacy level](/resources/guild#privacy-level) of the stage instance (default `GUILD_ONLY`)                       |
+| guild_scheduled_event_id? ^1^ | snowflake | The ID of the [scheduled event](/resources/guild-scheduled-event#guild-scheduled-event-object) for this stage instance |
+| send_start_notification? ^2^  | boolean   | Notify @everyone that a stage instance has started (default false)                                                     |
+
+^1^ Creating a stage instance for a scheduled event will set the scheduled event's `status` to `ACTIVE`.
+
+^2^ The stage moderator must have the `MENTION_EVERYONE` permission for this notification to be sent.
+
+## Endpoints
+
+<RouteHeader method="GET" url="/stage-instances/{channel.id}">
+  Get Stage Instance
+</RouteHeader>
+
+Gets the stage instance associated with the stage channel, if it exists. Returns a [stage instance](#stage-instance-object) object.
+
+<RouteHeader method="PATCH" url="/stage-instances/{channel.id}" supportsAuditReason>
+  Modify Stage Instance
+</RouteHeader>
+
+Updates fields of an existing stage instance. Requires the user to be a moderator of the stage channel. Returns the updated [stage instance](#stage-instance-object) object on success. Fires a [Stage Instance Update](/topics/gateway-events#stage-instance-update) Gateway event.
+
+###### JSON Params
+
+| Field          | Type    | Description                                                               |
+| -------------- | ------- | ------------------------------------------------------------------------- |
+| topic?         | string  | The topic of the stage instance (1-120 characters)                        |
+| privacy_level? | integer | The [privacy level](/resources/guild#privacy-level) of the stage instance |
+
+<RouteHeader method="DELETE" url="/stage-instances/{channel.id}" supportsAuditReason>
+  Delete Stage Instance
+</RouteHeader>
+
+Deletes the stage instance and associated invite. Requires the user to be a moderator of the stage channel. Returns a 204 empty response on success. Fires a [Stage Instance Delete](/topics/gateway-events#stage-instance-delete) and optionally an [Invite Delete](/topics/gateway-events#invite-delete) and [Guild Scheduled Event Update](/topics/gateway-events#guild-scheduled-event-update) Gateway event.
+
+<Alert type="info">
+
+Deleting a stage instance will automatically delete the associated invite and set the associated scheduled event's `status` to `COMPLETED`.
+
+</Alert>

@@ -1,0 +1,495 @@
+# Teams
+
+Teams are groups of developers on Discord who want to collaborate on apps. On other platforms, these may be referred to as "organizations", "companies", or "teams". Discord went with the name Teams because it best encompassed all the awesome conglomerates of devs that work together to make awesome things on Discord. Also, none of you ever got picked for kickball in gym class, so now you get to be on a team.
+
+Teams allow you and other Discord users to share access to apps. No more sharing login credentials in order to reset the token on a bot that your friend owns but you work on, or other such cases.
+
+For game developers, this means that you can get your engineers access to your app for credentials they may need, your marketing folks access to store page management, and your finance people access to sales and performance metrics.
+
+### Team Object
+
+###### Team Structure
+
+| Field                          | Type                                                                | Description                                                                    |
+| ------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| id                             | snowflake                                                           | The ID of the team                                                             |
+| name                           | string                                                              | The name of the team                                                           |
+| icon ^1^                       | ?string                                                             | The team's [icon hash](/reference#cdn-formatting)                              |
+| owner_user_id                  | snowflake                                                           | The ID of the team's owner                                                     |
+| members? ^2^                   | array[[team member](#team-member-object) object]                    | The members in the team                                                        |
+| payout_account_status? ^3^     | ?integer                                                            | The [status of the team's primary payout account](#team-payout-account-status) |
+| payout_account_statuses? ^3^   | array[[team payout account](#team-payout-account-structure) object] | The statuses of the team's payout accounts                                     |
+| stripe_connect_account_id? ^4^ | string                                                              | The ID of the team's Stripe Connect account                                    |
+
+^1^ The default team icon uses the same images as [default avatars](/reference#cdn-formatting) and can be calculated using `team_id % 5`.
+
+^2^ Only provided in the [application](/resources/application#application-object) object.
+
+^3^ Only included when fetched from [Get Team](#get-team) or [Get Teams](#get-teams) with `include_payout_account_status` set to `true`.
+
+^4^ Only included when fetched from [Get Team](#get-team).
+
+###### Team Payout Account Structure
+
+| Field   | Type    | Description                                                     |
+| ------- | ------- | --------------------------------------------------------------- |
+| gateway | integer | The [payout gateway](#team-payout-gateway) used                 |
+| status  | integer | The [status of the payout account](#team-payout-account-status) |
+
+###### Team Payout Gateway
+
+| Value | Name           | Description   |
+| ----- | -------------- | ------------- |
+| 1     | STRIPE_TOPUP   | Stripe Top-Up |
+| 2     | TIPALTI        | Tipalti       |
+| 3     | STRIPE_PRIMARY | Stripe        |
+
+###### Team Payout Account Status
+
+| Value | Name            | Description                                                   |
+| ----- | --------------- | ------------------------------------------------------------- |
+| 1     | UNSUBMITTED     | Team has not submitted a payout account application           |
+| 2     | PENDING         | Team's payout account application is pending approval         |
+| 3     | ACTION_REQUIRED | Team's payout account requires action to receive payouts      |
+| 4     | ACTIVE          | Team's payout account is active and can receive payouts       |
+| 5     | BLOCKED         | Team's payout account is blocked and cannot receive payouts   |
+| 6     | SUSPENDED       | Team's payout account is suspended and cannot receive payouts |
+
+###### Example Team
+
+```json
+{
+  "id": "1110738998453837384",
+  "icon": null,
+  "name": "Power",
+  "owner_user_id": "852892297661906993",
+  "payout_account_status": 1,
+  "payout_account_statuses": [{ "gateway": 1, "status": 1 }]
+}
+```
+
+### Team Member Object
+
+###### Team Member Structure
+
+| Field            | Type                                               | Description                                                |
+| ---------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| user             | partial [user](/resources/user#user-object) object | The user this team member represents                       |
+| team_id          | snowflake                                          | The ID of the team the user is a member of                 |
+| membership_state | integer                                            | The user's [team membership state](#team-membership-state) |
+| role             | string                                             | The user's [role](#team-member-roles) on the team          |
+
+###### Team Membership State
+
+| Value | Name     | Description                      |
+| ----- | -------- | -------------------------------- |
+| 1     | INVITED  | The user is invited              |
+| 2     | ACCEPTED | The user has accepted the invite |
+
+## Team Member Roles
+
+Team members can be one of four roles (owner, admin, developer, and read-only), and each role inherits the access of those below it. Roles for team members can be configured under **Team Members** in a team's settings.
+
+###### Team Member Role Types
+
+| Value     | Description                                                                                                                                                                                                                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| admin     | Admins have similar access to owners, except they cannot take destructive actions on the team or team-owned apps.                                                                                                                                                                                                                                 |
+| developer | Developers can access information about team-owned apps, like the client secret or public key. They can also take limited actions on team-owned apps, like configuring interaction endpoints or resetting the bot token. Members with the Developer role _cannot_ manage the team or its members, or take destructive actions on team-owned apps. |
+| read_only | Read-only members can access information about a team and any team-owned apps. Some examples include getting the IDs of applications and exporting payout records.                                                                                                                                                                                |
+
+##### Example Team Member
+
+```json
+{
+  "user": {
+    "id": "852892297661906993",
+    "username": "alien",
+    "global_name": "Alien",
+    "avatar": "05145cc5646fbcba277b6d5ea2030610",
+    "discriminator": "0",
+    "public_flags": 64,
+    "avatar_decoration_data": null,
+    "primary_guild": null
+  },
+  "team_id": "1110738998453870732",
+  "membership_state": 2,
+  "role": "admin"
+}
+```
+
+### Team Payout Object
+
+###### Team Payout Structure
+
+| Field                               | Type               | Description                                     |
+| ----------------------------------- | ------------------ | ----------------------------------------------- |
+| id                                  | snowflake          | The ID of the payout                            |
+| user_id                             | snowflake          | The ID of the user who receives the payout      |
+| amount                              | integer            | The amount of the payout                        |
+| status                              | integer            | The [status of the payout](#team-payout-status) |
+| period_start                        | ISO8601 timestamp  | When the payout period started                  |
+| period_end                          | ?ISO8601 timestamp | When the payout period ended                    |
+| payout_date                         | ?ISO8601 timestamp | When the payout was made                        |
+| latest_tipalti_submission_response? | object             | The latest response from Tipalti                |
+
+###### Team Payout Status
+
+| Value | Name              | Description                                  |
+| ----- | ----------------- | -------------------------------------------- |
+| 1     | OPEN              | The payout is open                           |
+| 2     | PAID              | The payout has been paid out                 |
+| 3     | PENDING           | The payout is pending completion             |
+| 4     | MANUAL            | The payout has been manually made            |
+| 5     | CANCELLED         | The payout has been cancelled                |
+| 6     | DEFERRED          | The payout has been deferred                 |
+| 7     | DEFERRED_INTERNAL | The payout has been deferred internally      |
+| 8     | PROCESSING        | The payout is processing                     |
+| 9     | ERROR             | The payout has errored                       |
+| 10    | REJECTED          | The payout has been rejected                 |
+| 11    | RISK_REVIEW       | The payout is under risk review              |
+| 12    | SUBMITTED         | The payout has been submitted for completion |
+| 13    | PENDING_FUNDS     | The payout is pending sufficient funds       |
+
+###### Example Team Payout
+
+```json
+{
+  "id": "1110738998453870732",
+  "user_id": "852892297661906993",
+  "amount": 1000000,
+  "status": 1,
+  "period_start": "2021-01-01",
+  "period_end": null,
+  "payout_date": null
+}
+```
+
+### Company Object
+
+A development/publishing company working on a game on Discord.
+
+###### Company Structure
+
+| Field | Type      | Description             |
+| ----- | --------- | ----------------------- |
+| id    | snowflake | The ID of the company   |
+| name  | string    | The name of the company |
+
+###### Example Company
+
+```json
+{
+  "id": "1058932127820939295",
+  "name": "AlienTec"
+}
+```
+
+###### Verification Status
+
+| Value | Name                   | Description                                                         |
+| ----- | ---------------------- | ------------------------------------------------------------------- |
+| 1     | REQUIRES_ACTION        | User action is required to complete verification                    |
+| 2     | PROCESSING             | The verification is currently in progress                           |
+| 3     | CANCELED               | The verification was cancelled before completion                    |
+| 4     | SUCCEEDED              | The verification succeeded                                          |
+| 5     | MANUALLY_SUCCEEDED     | The verification was manually approved by staff                     |
+| 6     | DELETED                | The verification was deleted                                        |
+| 7     | SUCCEEDED_GRACE_PERIOD | The verification is currently in a grace period before finalization |
+
+###### Verification Error
+
+| Value | Name                                           | Description                                                                         |
+| ----- | ---------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1     | ERROR_CONSENT_DECLINED                         | User declined consent at the beginning of verification                              |
+| 2     | ERROR_UNVERIFIED                               | Verification was aborted or Stripe failed to verify the user's identity             |
+| 3     | ERROR_DEVICE_UNSUPPORTED                       | The device used for verification is unsupported                                     |
+| 4     | ERROR_VERIFICATION_DOCUMENT_EXPIRED            | The submitted document has expired                                                  |
+| 5     | ERROR_VERIFICATION_DOCUMENT_INVALID            | The submitted document is invalid or does not meet verification criteria            |
+| 6     | ERROR_VERIFICATION_UNEXPECTED_DOCUMENT_COUNTRY | The submitted document issuing country does not match expected or allowed countries |
+| 7     | ERROR_VERIFICATION_UNEXPECTED_DOCUMENT_TYPE    | The submitted document type is not supported                                        |
+| 8     | ERROR_VERIFICATION_SCAN_NOT_READABLE           | The scan is not readable by the verification system                                 |
+| 9     | ERROR_VERIFICATION_SCAN_MISSING_BACK           | The scan is missing the back side of the document                                   |
+| 10    | ERROR_VERIFICATION_SCAN_ID_TYPE_NOT_SUPPORTED  | The ID type scanned is not supported by the verification system                     |
+| 11    | ERROR_VERIFICATION_SCAN_CORRUPT                | The scan is incomplete or corrupted                                                 |
+| 12    | ERROR_VERIFICATION_SCAN_FAILED_COPY            | The verification system failed to copy or process the scanned document              |
+| 13    | ERROR_VERIFICATION_SCAN_MANIPULATED_DOCUMENT   | The verification system determined the document was manipulated or tampered with    |
+| 14    | ERROR_VERIFICATION_SCAN_FAILED_GRAYSCALE       | The scan failed the grayscale check needed for verification                         |
+| 15    | ERROR_VERIFICATION_UNDER_SUPPORTED_AGE         | The user is under the minimum supported age for verification                        |
+
+## Endpoints
+
+<RouteHeader method="GET" url="/teams">
+  Get Teams
+</RouteHeader>
+
+Returns a list of [team](#team-object) objects that the current user is a member of.
+
+###### Query String Params
+
+| Field                          | Type    | Description                                                                                                  |
+| ------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------ |
+| include_payout_account_status? | boolean | Whether to include team [payout account status](#team-payout-account-status) in the response (default false) |
+
+<RouteHeader method="POST" url="/teams">
+  Create Team
+</RouteHeader>
+
+Creates a new team. Returns a [team](#team-object) object on success. Users can join a maximum of 30 teams.
+
+<Alert type="warn">
+
+This action requires the user to have MFA enabled.
+
+</Alert>
+
+###### JSON Params
+
+| Field | Type   | Description          |
+| ----- | ------ | -------------------- |
+| name  | string | The name of the team |
+
+<RouteHeader method="GET" url="/teams/{team.id}">
+  Get Team
+</RouteHeader>
+
+Returns a [team](#team-object) object for the given team ID.
+
+<RouteHeader method="PATCH" url="/teams/{team.id}" mfa>
+  Modify Team
+</RouteHeader>
+
+Modifies a team. User must be an admin of the team. Returns the updated [team](#team-object) object on success.
+
+###### JSON Params
+
+| Field          | Type                               | Description                                            |
+| -------------- | ---------------------------------- | ------------------------------------------------------ |
+| name?          | string                             | The name of the team                                   |
+| icon?          | ?[image data](/reference#cdn-data) | The team's icon                                        |
+| owner_user_id? | snowflake                          | The ID of the team's owner (must be the current owner) |
+
+<RouteHeader method="POST" url="/teams/{team.id}/delete" mfa>
+  Delete Team
+</RouteHeader>
+
+Deletes a team permanently. User must be the owner of the team. Returns a 204 empty response on success.
+
+<RouteHeader method="POST" url="/teams/invite/accept">
+  Accept Team Invite
+</RouteHeader>
+
+Accepts an invite to join a team. Returns a [team](#team-object) object on success. Users can join a maximum of 30 teams.
+
+<Alert type="warn">
+
+This action requires the user to have MFA enabled.
+
+</Alert>
+
+###### JSON Params
+
+| Field     | Type   | Description           |
+| --------- | ------ | --------------------- |
+| token ^1^ | string | The team invite token |
+
+^1^ This token can be retrieved by visiting the emailed `https://click.discord.com/` link and extracting the `#token` URI fragment from the redirect URL.
+
+<RouteHeader method="GET" url="/teams/{team.id}/members">
+  Get Team Members
+</RouteHeader>
+
+Returns a list of [team member](#team-member-object) objects for the given team ID.
+
+<RouteHeader method="POST" url="/teams/{team.id}/members" mfa>
+  Add Team Member
+</RouteHeader>
+
+Invites a user to the team. User must be an admin of the team. Returns a [team member](#team-member-object) object on success.
+
+<Alert type="warn">
+
+You must be friends with the user you are inviting.
+
+</Alert>
+
+###### JSON Params
+
+| Field              | Type    | Description                                       |
+| ------------------ | ------- | ------------------------------------------------- |
+| username           | string  | The username of the user to invite                |
+| discriminator? ^1^ | ?string | The discriminator of the user to invite           |
+| role               | string  | The user's [role](#team-member-roles) on the team |
+
+^1^ `null` for migrated users. See the [section on Discord's new username system](/resources/user#unique-usernames) for more information.
+
+<RouteHeader method="PATCH" url="/teams/{team.id}/members/{user.id}">
+  Modify Team Member
+</RouteHeader>
+
+Modifies a team member. User must be an admin of the team. Returns the updated [team member](#team-member-object) object on success.
+
+<Alert type="info">
+
+The team owner cannot be modified.
+
+</Alert>
+
+###### JSON Params
+
+| Field | Type   | Description                                       |
+| ----- | ------ | ------------------------------------------------- |
+| role? | string | The user's [role](#team-member-roles) on the team |
+
+<RouteHeader method="DELETE" url="/teams/{team.id}/members/{user.id}">
+  Remove Team Member
+</RouteHeader>
+
+Removes a team member. User must be the an admin of the team unless removing themselves. Returns a 204 empty response on success.
+
+<RouteHeader method="GET" url="/teams/{team.id}/applications">
+  Get Team Applications
+</RouteHeader>
+
+Returns a list of [application](/resources/application#application-object) objects for the given team ID.
+
+<RouteHeader method="POST" url="/teams/{team.id}/stripe/connect/redirect-url">
+  Get Team Stripe Connect URL
+</RouteHeader>
+
+Returns a link that can be used to access the team's Stripe Connect payout account dashboard.
+
+<Alert type="warn">
+
+Stripe Connect can only be used for payouts to US bank accounts.
+
+</Alert>
+
+###### JSON Params
+
+| Field         | Type   | Description                                                                                                 |
+| ------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
+| country_code? | string | The [ISO 3166-1 alpha-2 country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) country code to use |
+
+###### Response Body
+
+| Field                       | Type   | Description                     |
+| --------------------------- | ------ | ------------------------------- |
+| stripe_connect_redirect_url | string | The Stripe Connect redirect URL |
+
+###### Example Response
+
+```json
+{
+  "stripe_connect_redirect_url": "https://connect.stripe.com/setup/e/acct_123456/789abcd"
+}
+```
+
+<RouteHeader method="GET" url="/teams/{team.id}/payouts/onboarding">
+  Get Team Payout Onboarding
+</RouteHeader>
+
+Returns a link that can be embedded in an IFrame to allow the user to access the team's Tipalti payout account dashboard. User must be the owner of the team.
+
+<Alert type="warn">
+
+Tipalti can be used for payouts to international bank accounts.
+
+</Alert>
+
+###### Response Body
+
+| Field | Type   | Description             |
+| ----- | ------ | ----------------------- |
+| url   | string | The payee dashboard URL |
+
+###### Example Response
+
+```json
+{
+  "url": "https://ui2.tipalti.com/payeedashboard/home?ts=12345&idap=10418817887227111107389984538707326773&payer=Discord&hashkey=123456abcd"
+}
+```
+
+<RouteHeader method="GET" url="/teams/{team.id}/payouts">
+  Get Team Payouts
+</RouteHeader>
+
+Returns a list of [team payout](#team-payout-object) objects for the given team ID.
+
+###### Query String Params
+
+| Field  | Type      | Description                                        |
+| ------ | --------- | -------------------------------------------------- |
+| limit? | number    | Max number of payouts to return (1-96, default 96) |
+| after? | snowflake | Return payouts after this ID                       |
+
+<RouteHeader method="GET" url="/teams/{team.id}/payouts/{payout.id}/report">
+  Get Team Payout Report
+</RouteHeader>
+
+Returns a CSV file containing the payout report for the given payout ID.
+
+###### Query String Params
+
+| Field | Type   | Description                                                |
+| ----- | ------ | ---------------------------------------------------------- |
+| type  | string | The [type of report](#team-payout-report-type) to generate |
+
+###### Team Payout Report Type
+
+| Value       | Description           |
+| ----------- | --------------------- |
+| sku         | Report by SKU         |
+| transaction | Report by transaction |
+
+<RouteHeader method="GET" url="/companies">
+  Search Companies
+</RouteHeader>
+
+Returns a list of [company](#company-object) objects that match the given query. If no query is provided, returns a 204 empty response.
+
+###### Query String Params
+
+| Field | Type   | Description                          |
+| ----- | ------ | ------------------------------------ |
+| name? | string | Query to match company names against |
+
+<RouteHeader method="GET" url="/company/{company.id}">
+  Get Company
+</RouteHeader>
+
+Returns a [company](#company-object) object for the given company ID.
+
+<RouteHeader method="POST" url="/teams/{team.id}/companies">
+  Create Company
+</RouteHeader>
+
+Creates a new company under this team. Returns a [company](#company-object) object on success.
+
+###### JSON Params
+
+| Field | Type   | Description             |
+| ----- | ------ | ----------------------- |
+| name  | string | The name of the company |
+
+<RouteHeader method="POST" url="/teams/{team.id}/identity/verification">
+  Verify Team Identity
+</RouteHeader>
+
+Gets a Stripe identity verification link for team identity verification
+
+###### JSON Params
+
+| Field      | Type   | Description                                              |
+| ---------- | ------ | -------------------------------------------------------- |
+| return_url | string | The URL to redirect to after Stripe verifaction succeeds |
+
+###### Response Body
+
+| Field        | Type      | Description                                                             |
+| ------------ | --------- | ----------------------------------------------------------------------- |
+| id           | snowflake | The identifier for the verification session                             |
+| status       | number    | The current [status of the identity verification](#verification-status) |
+| last_error   | number    | The [error code of the last verification attempt](#verification-error)  |
+| redirect_url | string    | The Stripe verification popup URL                                       |
